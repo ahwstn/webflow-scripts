@@ -1,16 +1,17 @@
 /**
- * ah-hero.js — Ambient Dot-Grid Hero Background
- * @version 1.0.0
+ * ah-hero.js — Ambient Dot-Grid Hero Background + Hover Spotlight
+ * @version 2.0.0
  * @cdn https://cdn.jsdelivr.net/gh/ahwstn/webflow-scripts@main/ahwstn/ah-hero.min.js
  *
- * Flickering dot-grid canvas behind hero text. Same visual DNA as the
- * footer (ah-footer.js) but without the text mask — just ambient texture
- * with a subtle radial falloff (brighter centre, fading edges).
+ * Flickering dot-grid canvas behind hero text. Cursor-following spotlight
+ * raises the flicker ceiling and rate in a wide radius around the mouse,
+ * with lerped tracking for an organic, trailing feel.
  *
  * Static-first: hero content is fully readable without JS. Canvas is
  * purely decorative (aria-hidden).
  *
  * v1.0.0: Initial build — radial vignette, IO pause, RO resize, reduced-motion.
+ * v2.0.0: Hover spotlight — lerped cursor tracking, boosted flicker ceiling + rate.
  */
 (function () {
   'use strict';
@@ -22,11 +23,16 @@
   var SQ = 3;            /* square size px */
   var GAP = 5;           /* gap between squares px */
   var STEP = SQ + GAP;
-  var FLICKER = 0.3;     /* flicker rate (multiplied by deltaTime) */
-  var BASE_ALPHA = 0.06;
-  var VIGNETTE_POWER = 2.2;  /* radial falloff curve — higher = tighter spotlight */
-  var VIGNETTE_FLOOR = 0.15; /* minimum alpha multiplier at edges (0 = fully dark) */
+  var FLICKER = 0.3;     /* base flicker rate (multiplied by deltaTime) */
+  var BASE_ALPHA = 0.1;
   var COLOR_R = 242, COLOR_G = 242, COLOR_B = 242; /* Off-White #F2F2F2 */
+
+  /* Hover spotlight */
+  var HOVER_RADIUS = 500;     /* px — spotlight radius */
+  var HOVER_ALPHA = 0.25;     /* peak alpha at cursor centre */
+  var HOVER_FALLOFF = 3;      /* spotlight edge curve (higher = tighter) */
+  var LERP_SPEED = 0.05;      /* cursor tracking smoothness (lower = more lag) */
+  var HOVER_FLICKER_MULT = 4; /* flicker rate multiplier inside spotlight */
 
   /* --- Canvas setup --- */
   var canvas = document.createElement('canvas');
@@ -38,11 +44,24 @@
   hero.style.position = 'relative';
   hero.insertBefore(canvas, hero.firstChild);
 
-  var cols, rows, grid, vignette;
+  var cols, rows, grid, spotMap;
   var animId = null;
   var lastTime = 0;
   var isVisible = false;
   var rm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* Mouse state */
+  var mouseX = -9999, mouseY = -9999;
+  var isHovered = false;
+  var smoothX = -9999, smoothY = -9999;
+
+  hero.addEventListener('mouseenter', function () { isHovered = true; });
+  hero.addEventListener('mouseleave', function () { isHovered = false; });
+  hero.addEventListener('mousemove', function (e) {
+    var rect = hero.getBoundingClientRect();
+    mouseX = e.clientX - rect.left;
+    mouseY = e.clientY - rect.top;
+  });
 
   function resize() {
     var w = hero.clientWidth;
@@ -57,30 +76,13 @@
     cols = Math.ceil(w / STEP);
     rows = Math.ceil(h / STEP);
 
-    /* Build radial vignette map — multiplier per cell based on distance from centre */
-    vignette = new Float32Array(cols * rows);
-    var cx = w / 2;
-    var cy = h / 2;
-    var maxDist = Math.sqrt(cx * cx + cy * cy);
-
-    for (var r = 0; r < rows; r++) {
-      for (var c = 0; c < cols; c++) {
-        var px = c * STEP + SQ / 2;
-        var py = r * STEP + SQ / 2;
-        var dx = px - cx;
-        var dy = py - cy;
-        var dist = Math.sqrt(dx * dx + dy * dy) / maxDist; /* 0 at centre, 1 at corners */
-        /* Smooth falloff: 1.0 at centre → VIGNETTE_FLOOR at edges */
-        var falloff = 1 - Math.pow(dist, VIGNETTE_POWER) * (1 - VIGNETTE_FLOOR);
-        vignette[r * cols + c] = Math.max(falloff, VIGNETTE_FLOOR);
-      }
-    }
-
-    /* Initialise opacity grid with vignette applied */
+    /* Initialise opacity grid */
     grid = new Float32Array(cols * rows);
     for (var i = 0; i < grid.length; i++) {
-      grid[i] = Math.random() * BASE_ALPHA * vignette[i];
+      grid[i] = Math.random() * BASE_ALPHA;
     }
+
+    spotMap = new Float32Array(cols * rows);
 
     draw();
   }
@@ -101,6 +103,23 @@
     }
   }
 
+  function updateSpotMap() {
+    var active = smoothX > -999;
+    for (var r = 0; r < rows; r++) {
+      for (var c = 0; c < cols; c++) {
+        var i = r * cols + c;
+        if (!active) { spotMap[i] = 0; continue; }
+        var px = c * STEP + SQ / 2;
+        var py = r * STEP + SQ / 2;
+        var dx = px - smoothX;
+        var dy = py - smoothY;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist >= HOVER_RADIUS) { spotMap[i] = 0; continue; }
+        spotMap[i] = 1 - Math.pow(dist / HOVER_RADIUS, HOVER_FALLOFF);
+      }
+    }
+  }
+
   function animate(timestamp) {
     if (!isVisible) return;
 
@@ -109,9 +128,28 @@
     lastTime = timestamp;
     if (deltaTime > 0.1) deltaTime = 0.1;
 
+    /* Lerp smoothed mouse towards actual mouse */
+    if (isHovered) {
+      if (smoothX < -999) { smoothX = mouseX; smoothY = mouseY; }
+      smoothX += (mouseX - smoothX) * LERP_SPEED;
+      smoothY += (mouseY - smoothY) * LERP_SPEED;
+    } else {
+      /* Fade out: drift smooth position off-screen gradually */
+      smoothX += (-9999 - smoothX) * 0.02;
+      smoothY += (-9999 - smoothY) * 0.02;
+    }
+
+    /* Update spotlight intensity map */
+    updateSpotMap();
+
+    /* Flicker: dots inside spotlight get boosted ceiling + faster rate */
     for (var i = 0; i < grid.length; i++) {
-      if (Math.random() < FLICKER * deltaTime) {
-        grid[i] = Math.random() * BASE_ALPHA * vignette[i];
+      var t = spotMap[i];
+      var flickerRate = FLICKER + (FLICKER * (HOVER_FLICKER_MULT - 1)) * t;
+      var alphaCeiling = BASE_ALPHA + (HOVER_ALPHA - BASE_ALPHA) * t;
+
+      if (Math.random() < flickerRate * deltaTime) {
+        grid[i] = Math.random() * alphaCeiling;
       }
     }
 
