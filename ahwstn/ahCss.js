@@ -1,6 +1,6 @@
 /**
  * ahCss.js — CSS Injection (Header)
- * @version 1.0.0
+ * @version 1.0.1
  * @cdn https://cdn.jsdelivr.net/gh/ahwstn/webflow-scripts@main/ahwstn/ahCss.min.js
  *
  * JS-injected <style> for things the Webflow Designer genuinely cannot do:
@@ -50,7 +50,7 @@
   +   'opacity:0;'
   +   'color:#E85D04;'
   +   'font-weight:600;'
-  +   'vertical-align:text-bottom;'
+  +   'vertical-align:baseline;'
   +   'transition:width .3s var(--expo-out),opacity .2s var(--expo-out)'
   + '}'
   + '.nav_link:hover::before,'
@@ -71,7 +71,7 @@
   +   'opacity:0;'
   +   'color:#E85D04;'
   +   'font-weight:600;'
-  +   'vertical-align:text-bottom;'
+  +   'vertical-align:baseline;'
   +   'transition:width .3s var(--expo-out),opacity .2s var(--expo-out)'
   + '}'
   + '.nav_overlay-link:hover::before,'
