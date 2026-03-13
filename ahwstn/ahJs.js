@@ -1,12 +1,16 @@
 /**
  * ahJs.js — Behavioural JS (Footer, defer)
- * @version 1.0.0
+ * @version 1.3.0
  * @cdn https://cdn.jsdelivr.net/gh/ahwstn/webflow-scripts@main/ahwstn/ahJs.min.js
  *
  * Vanilla JS + GSAP (loaded via Site Settings: ScrollTrigger, SplitText).
  * Static-first: all content visible and navigable without this script.
  *
  * v1.0.0: Hero SplitText cascade, nav scroll observer, mobile nav toggle.
+ * v1.1.0: Work hover image reveal (quickTo cursor-follow),
+ *         bridge ScrambleText decode on scroll entry.
+ * v1.2.0: Service pill cursor-following glow (sets --pill-x/--pill-y).
+ * v1.3.0: Service card 3D tilt (Config E — ±4°, cursor glow, orange shadow).
  */
 (function () {
   'use strict';
@@ -130,6 +134,114 @@
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && isOpen) hamburger.click();
     });
+  }
+
+  /* ===== Work hover image reveal ===== */
+  /* Project image follows cursor on hover via gsap.quickTo for spring feel.
+     Desktop only — touch devices get no hover, image stays hidden. */
+  var workItems = document.querySelectorAll('.home-work_item[data-img]');
+  var workImg = document.querySelector('.home-work_image');
+
+  if (workItems.length && workImg && window.gsap && !rm) {
+    var xTo = gsap.quickTo(workImg, 'left', { duration: 0.4, ease: 'power3.out' });
+    var yTo = gsap.quickTo(workImg, 'top', { duration: 0.4, ease: 'power3.out' });
+
+    workItems.forEach(function (item) {
+      item.addEventListener('mouseenter', function () {
+        workImg.src = item.dataset.img;
+        gsap.to(workImg, { opacity: 1, scale: 1, duration: 0.3, ease: 'power2.out' });
+      });
+      item.addEventListener('mouseleave', function () {
+        gsap.to(workImg, { opacity: 0, scale: 0.95, duration: 0.2, ease: 'power2.in' });
+      });
+      item.addEventListener('mousemove', function (e) {
+        xTo(e.clientX + 20);
+        yTo(e.clientY - 20);
+      });
+    });
+  }
+
+  /* ===== Service pill cursor glow ===== */
+  /* Sets --pill-x / --pill-y on each pill so the CSS radial-gradient
+     follows the cursor. Delegated listener on each pills container. */
+  var pillsContainers = document.querySelectorAll('.home-services_pills');
+
+  if (pillsContainers.length && matchMedia('(hover:hover)').matches) {
+    pillsContainers.forEach(function (container) {
+      container.addEventListener('mousemove', function (e) {
+        var pill = e.target.closest('.home-services_pill');
+        if (!pill) return;
+        var rect = pill.getBoundingClientRect();
+        pill.style.setProperty('--pill-x', ((e.clientX - rect.left) / rect.width * 100) + '%');
+        pill.style.setProperty('--pill-y', ((e.clientY - rect.top) / rect.height * 100) + '%');
+      });
+    });
+  }
+
+  /* ===== Service card 3D tilt ===== */
+  var tiltGrid = document.querySelector('.home-services_cards');
+  var tiltCards = tiltGrid ? tiltGrid.querySelectorAll('.home-services_card') : [];
+
+  if (tiltCards.length && matchMedia('(hover:hover)').matches && !rm) {
+    tiltCards.forEach(function (card) {
+      card.addEventListener('mousemove', function (e) {
+        var r = card.getBoundingClientRect();
+        var x = (e.clientX - r.left) / r.width;
+        var y = (e.clientY - r.top) / r.height;
+        var rx = (0.5 - y) * 8;
+        var ry = (x - 0.5) * 8;
+        card.style.transform = 'rotateX(' + rx + 'deg) rotateY(' + ry + 'deg)';
+        var sx = (x - 0.5) * 20;
+        var sy = (y - 0.5) * 20;
+        card.style.boxShadow = sx + 'px ' + sy + 'px 40px rgba(232,93,4,.12)';
+        card.style.setProperty('--card-glow-x', (x * 100) + '%');
+        card.style.setProperty('--card-glow-y', (y * 100) + '%');
+      });
+      card.addEventListener('mouseleave', function () {
+        card.style.transform = '';
+        card.style.boxShadow = '';
+        card.style.setProperty('--card-glow-x', '50%');
+        card.style.setProperty('--card-glow-y', '50%');
+      });
+    });
+  }
+
+  /* ===== Bridge ScrambleText ===== */
+  /* Decodes </ahwstn> from random terminal chars on scroll entry.
+     Falls back gracefully — text is already visible without this. */
+  var bridgeTag = document.querySelector('.bridge_tag');
+
+  if (bridgeTag && window.gsap && window.ScrollTrigger && !rm) {
+    /* ScrambleTextPlugin is a Club plugin — check availability */
+    if (window.ScrambleTextPlugin) {
+      gsap.registerPlugin(ScrambleTextPlugin);
+      gsap.from(bridgeTag, {
+        scrambleText: {
+          text: bridgeTag.textContent,
+          chars: '/<>{}[]|\\:;=+_-~`!@#$%^&*()',
+          speed: 0.4,
+          revealDelay: 0.3
+        },
+        scrollTrigger: {
+          trigger: bridgeTag,
+          start: 'top 80%',
+          toggleActions: 'play none none none'
+        }
+      });
+    } else {
+      /* Fallback: simple opacity + y entrance via ScrollTrigger */
+      gsap.from(bridgeTag, {
+        opacity: 0,
+        y: 30,
+        duration: 0.8,
+        ease: 'power3.out',
+        scrollTrigger: {
+          trigger: bridgeTag,
+          start: 'top 80%',
+          toggleActions: 'play none none none'
+        }
+      });
+    }
   }
 
 })();

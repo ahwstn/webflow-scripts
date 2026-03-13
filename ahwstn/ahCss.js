@@ -1,6 +1,6 @@
 /**
  * ahCss.js — CSS Injection (Header)
- * @version 1.1.0
+ * @version 1.4.0
  * @cdn https://cdn.jsdelivr.net/gh/ahwstn/webflow-scripts@main/ahwstn/ahCss.min.js
  *
  * JS-injected <style> for things the Webflow Designer genuinely cannot do:
@@ -8,8 +8,9 @@
  * - ::before / ::after pseudo-elements
  * - @keyframes
  * - @media (prefers-reduced-motion)
+ * - @media (hover: hover)
  * - clamp() values
- * - Complex selectors
+ * - Complex selectors (:has(), :nth-child)
  *
  * Rule 6 compliant — every rule here is on the allowed list.
  * Static-first: all content readable without this script.
@@ -17,6 +18,13 @@
  * v1.0.0: Easing vars, nav slash hover, button fills, card hovers,
  *         view-timeline entrances, FOUC prevention, reduced-motion.
  * v1.1.0: Nav glass backdrop-filter, step line draw animation.
+ * v1.2.0: Services + work sibling dim (:has() hover), work hover
+ *         image styles, bridge clamp sizing, process slash colour.
+ *         Removed step_line (no longer used).
+ * v1.3.0: Service tags — squared off, pixelated orb glow hover (dot-grid
+ *         texture + orange radial glow), staggered scroll entrance.
+ * v1.4.0: Service tilt cards — frosted glass, perspective, dot-grid surface,
+ *         cursor-following orange glow, sibling dim, container flex ordering.
  */
 (function () {
   'use strict';
@@ -180,26 +188,131 @@
   +   '-webkit-backdrop-filter:blur(12px)'
   + '}'
 
-  /* === Step connecting line — draw animation on scroll === */
-  + '.step_line{'
-  +   'transform-origin:top center;'
-  +   'transform:scaleY(0);'
-  +   'animation:ahLineDraw .6s var(--expo-out) forwards;'
+  /* === Services list — sibling dim on hover === */
+  + '@media(hover:hover){'
+  +   '.home-services_item{transition:opacity .4s var(--expo-out);border-left:2px solid transparent;padding-left:1.5rem}'
+  +   '.home-services_list:has(.home-services_item:hover) .home-services_item{opacity:.4}'
+  +   '.home-services_list:has(.home-services_item:hover) .home-services_item:hover{opacity:1;border-left-color:#E85D04}'
+  + '}'
+
+  /* === Work list — sibling dim on hover === */
+  + '@media(hover:hover){'
+  +   '.home-work_item{transition:opacity .4s var(--expo-out)}'
+  +   '.home-work_list:has(.home-work_item:hover) .home-work_item{opacity:.4}'
+  +   '.home-work_list:has(.home-work_item:hover) .home-work_item:hover{opacity:1}'
+  + '}'
+
+  /* === Work hover image — cursor-following reveal === */
+  + '.home-work_image{'
+  +   'position:fixed;'
+  +   'top:0;left:0;'
+  +   'width:400px;height:250px;'
+  +   'object-fit:cover;'
+  +   'border-radius:.5rem;'
+  +   'pointer-events:none;'
+  +   'opacity:0;'
+  +   'transform:scale(.95);'
+  +   'z-index:100;'
+  +   'will-change:transform,opacity'
+  + '}'
+
+  /* === Bridge tag — viewport-filling clamp === */
+  + '.bridge_tag{'
+  +   'font-size:clamp(4rem,15vw,10rem);'
+  +   'line-height:1;'
+  +   'text-align:center'
+  + '}'
+
+  /* === Service tags — pixelated orb glow hover === */
+  + '.home-services_pill{'
+  +   'position:relative;'
+  +   '--pill-x:50%;--pill-y:50%;'
+  +   'background-image:radial-gradient(circle,rgba(255,255,255,.05) 1px,transparent 1px);'
+  +   'background-size:4px 4px;'
+  +   'transition:border-color .3s var(--expo-out),color .3s var(--expo-out),box-shadow .3s var(--expo-out)'
+  + '}'
+  + '@media(hover:hover){'
+  +   '.home-services_pill:hover{'
+  +     'border-color:rgba(232,93,4,.3);'
+  +     'color:#F2F2F2;'
+  +     'background-image:'
+  +       'radial-gradient(circle at var(--pill-x) var(--pill-y),rgba(232,93,4,.12) 0%,transparent 70%),'
+  +       'radial-gradient(circle,rgba(255,255,255,.07) 1px,transparent 1px);'
+  +     'background-size:100% 100%,4px 4px;'
+  +     'box-shadow:0 0 12px rgba(232,93,4,.08)'
+  +   '}'
+  + '}'
+
+  /* === Service tags — staggered scroll entrance === */
+  + '.home-services_pill{'
+  +   'opacity:0;'
+  +   'animation:ahReveal .5s var(--expo-out) forwards;'
   +   'animation-timeline:view();'
-  +   'animation-range:entry 0% entry 60%'
+  +   'animation-range:entry 5% entry 35%'
   + '}'
-  + '@keyframes ahLineDraw{'
-  +   'from{transform:scaleY(0)}'
-  +   'to{transform:scaleY(1)}'
+  + '.home-services_pill:nth-child(2){animation-range:entry 8% entry 38%}'
+  + '.home-services_pill:nth-child(3){animation-range:entry 11% entry 41%}'
+  + '.home-services_pill:nth-child(4){animation-range:entry 14% entry 44%}'
+  + '.home-services_pill:nth-child(5){animation-range:entry 17% entry 47%}'
+
+  /* === Services container — flex column for DOM ordering === */
+  + '.section_home-services .container-large{display:flex;flex-direction:column}'
+  + '.home-services_list{order:0}'
+  + '.home-services_cards{order:1}'
+  + '.section_home-services .button.is-ghost{order:2}'
+
+  /* === Service tilt cards — frosted glass + perspective === */
+  + '.home-services_cards{perspective:900px}'
+  + '.home-services_card{'
+  +   'transform-style:preserve-3d;'
+  +   'will-change:transform;'
+  +   '--card-glow-x:50%;--card-glow-y:50%;'
+  +   'background-color:rgba(255,255,255,0.03);'
+  +   'border:1px solid rgba(255,255,255,0.08);'
+  +   'backdrop-filter:blur(16px);'
+  +   '-webkit-backdrop-filter:blur(16px);'
+  +   'transition:border-color .5s var(--expo-out),'
+  +     'box-shadow .5s var(--expo-out),'
+  +     'transform .5s var(--expo-out),'
+  +     'opacity .4s var(--expo-out)'
   + '}'
+
+  /* === Service card surface — dot-grid texture === */
+  + '.home-services_card-surface{'
+  +   'background-image:radial-gradient(circle,rgba(255,255,255,.05) 1px,transparent 1px);'
+  +   'background-size:4px 4px'
+  + '}'
+
+  /* === Service card — cursor-following orange glow on hover === */
+  + '@media(hover:hover){'
+  +   '.home-services_card:hover .home-services_card-surface{'
+  +     'background-image:'
+  +       'radial-gradient(circle at var(--card-glow-x) var(--card-glow-y),rgba(232,93,4,.08) 0%,transparent 60%),'
+  +       'radial-gradient(circle,rgba(255,255,255,.05) 1px,transparent 1px);'
+  +     'background-size:100% 100%,4px 4px'
+  +   '}'
+  +   '.home-services_card:hover{border-color:rgba(232,93,4,.3)}'
+  + '}'
+
+  /* === Service cards — sibling dim on hover === */
+  + '@media(hover:hover){'
+  +   '.home-services_cards:has(.home-services_card:hover) .home-services_card{opacity:.4}'
+  +   '.home-services_cards:has(.home-services_card:hover) .home-services_card:hover{opacity:1}'
+  + '}'
+
+  /* === Process line — orange slash separators === */
+  + '.home-proof_slash{color:#E85D04;font-weight:600}'
 
   /* === Reduced motion: disable all animations === */
   + '@media(prefers-reduced-motion:reduce){'
   +   '.home-hero_heading,.home-hero_subline{opacity:1}'
   +   + '[data-ah-reveal]{opacity:1;animation:none;transform:none}'
   +   + '.bridge_tag{animation:none;background:none;-webkit-text-fill-color:#F2F2F2}'
-  +   + '.step_line{animation:none;transform:scaleY(1)}'
   +   + '.card_wrapper{transition:none}'
+  +   + '.home-services_item,.home-work_item,.home-services_card{transition:none}'
+  +   + '.home-services_card{transform:none!important;will-change:auto}'
+  +   + '.home-services_pill{opacity:1;animation:none}'
+  +   + '.home-services_pill{background-image:none}'
   +   + '.nav_link::before,.nav_overlay-link::before{transition:none}'
   +   + '.button.is-primary::before,.button.is-ghost::after{transition:none}'
   + '}'
