@@ -130,14 +130,11 @@
   }, { root: null, threshold: 0 });
   observer.observe(sentinel);
 
-  /* --- Hover: re-expand when scrolled, collapse on leave --- */
-  var logo = document.querySelector('.nav_logo');
-  if (logo) {
-    logo.addEventListener('mouseenter', function () {
-      if (isScrolled) typeIn();
-    });
-    logo.addEventListener('mouseleave', function () {
-      if (isScrolled) typeOut();
-    });
-  }
+  /* --- Hover: re-expand when anywhere on nav is hovered, collapse on leave --- */
+  nav.addEventListener('mouseenter', function () {
+    if (isScrolled) typeIn();
+  });
+  nav.addEventListener('mouseleave', function () {
+    if (isScrolled) typeOut();
+  });
 })();
