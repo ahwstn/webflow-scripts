@@ -267,8 +267,7 @@
   +   'transform-style:preserve-3d;'
   +   'will-change:transform;'
   +   '--card-glow-x:50%;--card-glow-y:50%;'
-  +   'background-color:rgba(255,255,255,0.03);'
-  +   'border:1px solid rgba(255,255,255,0.08);'
+  +   '--card-accent:232,93,4;'
   +   'backdrop-filter:blur(16px);'
   +   '-webkit-backdrop-filter:blur(16px);'
   +   'transition:border-color .5s var(--expo-out),'
@@ -276,6 +275,10 @@
   +     'transform .5s var(--expo-out),'
   +     'opacity .4s var(--expo-out)'
   + '}'
+  /* Per-card accent colours */
+  + '.home-services_card.is-shopify{--card-accent:232,93,4}'
+  + '.home-services_card.is-webflow{--card-accent:107,70,193}'
+  + '.home-services_card.is-custom{--card-accent:45,212,191}'
 
   /* === Service card surface — dot-grid texture === */
   + '.home-services_card-surface{'
@@ -283,15 +286,15 @@
   +   'background-size:4px 4px'
   + '}'
 
-  /* === Service card — cursor-following orange glow on hover === */
+  /* === Service card — cursor-following glow on hover (uses --card-accent) === */
   + '@media(hover:hover){'
   +   '.home-services_card:hover .home-services_card-surface{'
   +     'background-image:'
-  +       'radial-gradient(circle at var(--card-glow-x) var(--card-glow-y),rgba(232,93,4,.08) 0%,transparent 60%),'
+  +       'radial-gradient(circle at var(--card-glow-x) var(--card-glow-y),rgba(var(--card-accent),.08) 0%,transparent 60%),'
   +       'radial-gradient(circle,rgba(255,255,255,.05) 1px,transparent 1px);'
   +     'background-size:100% 100%,4px 4px'
   +   '}'
-  +   '.home-services_card:hover{border-color:rgba(232,93,4,.3)}'
+  +   '.home-services_card:hover{border-color:rgba(var(--card-accent),.3)}'
   + '}'
 
   /* === Service cards — sibling dim on hover === */

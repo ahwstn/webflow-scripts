@@ -193,7 +193,8 @@
         card.style.transform = 'rotateX(' + rx + 'deg) rotateY(' + ry + 'deg)';
         var sx = (x - 0.5) * 20;
         var sy = (y - 0.5) * 20;
-        card.style.boxShadow = sx + 'px ' + sy + 'px 40px rgba(232,93,4,.12)';
+        var accent = getComputedStyle(card).getPropertyValue('--card-accent').trim() || '232,93,4';
+        card.style.boxShadow = sx + 'px ' + sy + 'px 40px rgba(' + accent + ',.12)';
         card.style.setProperty('--card-glow-x', (x * 100) + '%');
         card.style.setProperty('--card-glow-y', (y * 100) + '%');
       });
