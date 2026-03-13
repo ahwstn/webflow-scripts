@@ -278,7 +278,7 @@
   /* Per-card accent colours */
   + '.home-services_card.is-shopify{--card-accent:232,93,4}'
   + '.home-services_card.is-webflow{--card-accent:107,70,193}'
-  + '.home-services_card.is-custom{--card-accent:45,212,191}'
+  + '.home-services_card.is-custom{--card-accent:200,200,200}'
 
   /* === Service card surface — dot-grid texture === */
   + '.home-services_card-surface{'
