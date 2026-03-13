@@ -1,10 +1,11 @@
 /**
- * ah-footer.js — Canvas CTA Footer
- * @version 1.0.0
+ * ah-footer.js — Canvas CTA Footer + Hover Spotlight
+ * @version 2.0.0
  * @cdn https://cdn.jsdelivr.net/gh/ahwstn/webflow-scripts@main/ahwstn/ah-footer.min.js
  *
  * Canvas-based flickering dot-grid with multiline text mask ("Let's\nconnect"
- * in Space Grotesk 700). Adapted from amh-lib N16 for ahwstn dark rebrand.
+ * in Space Grotesk 700). Cursor-following spotlight raises the flicker ceiling
+ * and rate in a wide radius around the mouse.
  *
  * Static-first: footer bar (social links + legal) is fully functional
  * without JS. JS adds: flickering canvas with text mask.
@@ -13,6 +14,7 @@
  * in DOM provides text alternative for screen readers (Query-AH-001).
  *
  * v1.0.0: Initial build — standalone (no AMH.register dependency).
+ * v2.0.0: Hover spotlight — lerped cursor tracking, boosted flicker ceiling + rate.
  */
 (function () {
   'use strict';
@@ -24,8 +26,8 @@
   var SQ = 3;            /* square size px */
   var GAP = 5;           /* gap between squares px */
   var STEP = SQ + GAP;
-  var FLICKER = 0.3;     /* flicker rate (multiplied by deltaTime) */
-  var BASE_ALPHA = 0.06;
+  var FLICKER = 0.3;     /* base flicker rate (multiplied by deltaTime) */
+  var BASE_ALPHA = 0.1;
   var MASK_BOOST = 2;
   var MASK_FLOOR = 0.15;
   var TEXT = "Let's\nconnect";
@@ -36,6 +38,13 @@
   var TEXT_Y_PCT = 0.78; /* vertical position as fraction */
   var COLOR_R = 242, COLOR_G = 242, COLOR_B = 242; /* Off-White #F2F2F2 */
 
+  /* Hover spotlight */
+  var HOVER_RADIUS = 500;     /* px — spotlight radius */
+  var HOVER_ALPHA = 0.25;     /* peak alpha boost at cursor centre */
+  var HOVER_FALLOFF = 3;      /* spotlight edge curve (higher = tighter) */
+  var LERP_SPEED = 0.05;      /* cursor tracking smoothness (lower = more lag) */
+  var HOVER_FLICKER_MULT = 4; /* flicker rate multiplier inside spotlight */
+
   /* --- Canvas setup --- */
   var canvas = document.createElement('canvas');
   canvas.setAttribute('aria-hidden', 'true');
@@ -43,11 +52,24 @@
   var ctx = canvas.getContext('2d');
   wrap.appendChild(canvas);
 
-  var cols, rows, grid, textMask;
+  var cols, rows, grid, textMask, spotMap;
   var animId = null;
   var lastTime = 0;
   var isVisible = false;
   var rm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* Mouse state */
+  var mouseX = -9999, mouseY = -9999;
+  var isHovered = false;
+  var smoothX = -9999, smoothY = -9999;
+
+  wrap.addEventListener('mouseenter', function () { isHovered = true; });
+  wrap.addEventListener('mouseleave', function () { isHovered = false; });
+  wrap.addEventListener('mousemove', function (e) {
+    var rect = wrap.getBoundingClientRect();
+    mouseX = e.clientX - rect.left;
+    mouseY = e.clientY - rect.top;
+  });
 
   function resize() {
     var w = wrap.clientWidth;
@@ -67,6 +89,8 @@
     for (var i = 0; i < grid.length; i++) {
       grid[i] = Math.random() * BASE_ALPHA;
     }
+
+    spotMap = new Float32Array(cols * rows);
 
     buildTextMask(w, h);
     draw();
@@ -140,6 +164,23 @@
     }
   }
 
+  function updateSpotMap() {
+    var active = smoothX > -999;
+    for (var r = 0; r < rows; r++) {
+      for (var c = 0; c < cols; c++) {
+        var i = r * cols + c;
+        if (!active) { spotMap[i] = 0; continue; }
+        var px = c * STEP + SQ / 2;
+        var py = r * STEP + SQ / 2;
+        var dx = px - smoothX;
+        var dy = py - smoothY;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist >= HOVER_RADIUS) { spotMap[i] = 0; continue; }
+        spotMap[i] = 1 - Math.pow(dist / HOVER_RADIUS, HOVER_FALLOFF);
+      }
+    }
+  }
+
   function animate(timestamp) {
     if (!isVisible) return;
 
@@ -149,13 +190,33 @@
     lastTime = timestamp;
     if (deltaTime > 0.1) deltaTime = 0.1;
 
-    /* Flicker random squares */
+    /* Lerp smoothed mouse towards actual mouse */
+    if (isHovered) {
+      if (smoothX < -999) { smoothX = mouseX; smoothY = mouseY; }
+      smoothX += (mouseX - smoothX) * LERP_SPEED;
+      smoothY += (mouseY - smoothY) * LERP_SPEED;
+    } else {
+      smoothX += (-9999 - smoothX) * 0.02;
+      smoothY += (-9999 - smoothY) * 0.02;
+    }
+
+    /* Update spotlight intensity map */
+    updateSpotMap();
+
+    /* Flicker: spotlight boosts ceiling + rate, stacking with text mask */
     for (var i = 0; i < grid.length; i++) {
-      if (Math.random() < FLICKER * deltaTime) {
+      var t = spotMap[i];
+      var flickerRate = FLICKER + (FLICKER * (HOVER_FLICKER_MULT - 1)) * t;
+
+      if (Math.random() < flickerRate * deltaTime) {
         if (textMask && textMask[i]) {
-          grid[i] = Math.random() * (BASE_ALPHA * MASK_BOOST) + MASK_FLOOR;
+          /* Text-masked: higher base + spotlight boost on top */
+          var maskCeiling = BASE_ALPHA * MASK_BOOST + (HOVER_ALPHA - BASE_ALPHA) * t;
+          grid[i] = Math.random() * maskCeiling + MASK_FLOOR;
         } else {
-          grid[i] = Math.random() * BASE_ALPHA;
+          /* Background: same as hero spotlight */
+          var alphaCeiling = BASE_ALPHA + (HOVER_ALPHA - BASE_ALPHA) * t;
+          grid[i] = Math.random() * alphaCeiling;
         }
       }
     }
