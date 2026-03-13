@@ -1,6 +1,6 @@
 /**
  * ahCss.js — CSS Injection (Header)
- * @version 1.0.1
+ * @version 1.1.0
  * @cdn https://cdn.jsdelivr.net/gh/ahwstn/webflow-scripts@main/ahwstn/ahCss.min.js
  *
  * JS-injected <style> for things the Webflow Designer genuinely cannot do:
@@ -16,6 +16,7 @@
  *
  * v1.0.0: Easing vars, nav slash hover, button fills, card hovers,
  *         view-timeline entrances, FOUC prevention, reduced-motion.
+ * v1.1.0: Nav glass backdrop-filter, step line draw animation.
  */
 (function () {
   'use strict';
@@ -173,11 +174,31 @@
   +   'box-shadow:0 0 0 3px rgba(232,93,4,.15)'
   + '}'
 
+  /* === Nav glass backdrop-filter === */
+  + '.nav_wrapper{'
+  +   'backdrop-filter:blur(12px);'
+  +   '-webkit-backdrop-filter:blur(12px)'
+  + '}'
+
+  /* === Step connecting line — draw animation on scroll === */
+  + '.step_line{'
+  +   'transform-origin:top center;'
+  +   'transform:scaleY(0);'
+  +   'animation:ahLineDraw .6s var(--expo-out) forwards;'
+  +   'animation-timeline:view();'
+  +   'animation-range:entry 0% entry 60%'
+  + '}'
+  + '@keyframes ahLineDraw{'
+  +   'from{transform:scaleY(0)}'
+  +   'to{transform:scaleY(1)}'
+  + '}'
+
   /* === Reduced motion: disable all animations === */
   + '@media(prefers-reduced-motion:reduce){'
   +   '.home-hero_heading,.home-hero_subline{opacity:1}'
   +   + '[data-ah-reveal]{opacity:1;animation:none;transform:none}'
   +   + '.bridge_tag{animation:none;background:none;-webkit-text-fill-color:#F2F2F2}'
+  +   + '.step_line{animation:none;transform:scaleY(1)}'
   +   + '.card_wrapper{transition:none}'
   +   + '.nav_link::before,.nav_overlay-link::before{transition:none}'
   +   + '.button.is-primary::before,.button.is-ghost::after{transition:none}'

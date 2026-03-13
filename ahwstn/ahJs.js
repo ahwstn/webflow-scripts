@@ -22,6 +22,7 @@
       var split = new SplitText(heroHeading, { type: 'words', aria: false });
       gsap.set(split.words, { opacity: 0, y: 40 });
       gsap.set(heroHeading, { opacity: 1 });
+      if (heroSubline) gsap.set(heroSubline, { y: 20 });
 
       if (!rm) {
         gsap.to(split.words, {
