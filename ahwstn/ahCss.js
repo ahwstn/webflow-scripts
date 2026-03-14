@@ -41,7 +41,8 @@
   + ':root{'
   +   '--expo-out:cubic-bezier(.22,1,.36,1);'
   +   '--spring-smooth:linear(0,0.002,0.008,0.018,0.032,0.05,0.071,0.096,0.124,0.154,0.187,0.222,0.259,0.297,0.337,0.378,0.42,0.462,0.504,0.546,0.587,0.628,0.667,0.705,0.741,0.775,0.808,0.838,0.866,0.891,0.914,0.934,0.952,0.967,0.98,0.99,0.998,1.003,1.006,1.007,1.006,1.004,1.001,0.998,0.996,0.995,0.994,0.994,0.995,0.997,0.998,1);'
-  +   '--spring-active:linear(0,0.004,0.016,0.035,0.063,0.098,0.141,0.19,0.245,0.305,0.37,0.438,0.509,0.581,0.654,0.726,0.796,0.863,0.926,0.985,1.038,1.085,1.126,1.159,1.185,1.204,1.216,1.221,1.22,1.213,1.201,1.185,1.166,1.145,1.122,1.099,1.076,1.054,1.033,1.014,0.998,0.984,0.974,0.966,0.961,0.959,0.96,0.963,0.967,0.973,0.979,0.986,0.993,0.999,1.004,1.008,1.01,1.011,1.01,1.008,1.006,1.003,1)'
+  +   '--spring-active:linear(0,0.004,0.016,0.035,0.063,0.098,0.141,0.19,0.245,0.305,0.37,0.438,0.509,0.581,0.654,0.726,0.796,0.863,0.926,0.985,1.038,1.085,1.126,1.159,1.185,1.204,1.216,1.221,1.22,1.213,1.201,1.185,1.166,1.145,1.122,1.099,1.076,1.054,1.033,1.014,0.998,0.984,0.974,0.966,0.961,0.959,0.96,0.963,0.967,0.973,0.979,0.986,0.993,0.999,1.004,1.008,1.01,1.011,1.01,1.008,1.006,1.003,1);'
+  +   '--nav-height:4.0625rem'
   + '}'
   /* Fallback for browsers without linear() support */
   + '@supports not (transition-timing-function:linear(0,1)){'
@@ -204,11 +205,15 @@
   + '}'
 
   /* === Work horizontal scroll — view-timeline + animation (Designer can't do these) === */
+  /* Nav offset: calc/var can't be set in Designer */
+  + '.home-work_viewport{top:var(--nav-height);height:calc(100vh - var(--nav-height))}'
   + '.home-work_wrapper{'
   +   'view-timeline-name:--ah-work-scroll;'
   +   'view-timeline-axis:block'
   + '}'
   + '.home-work_viewport .w-dyn-list{flex:1;min-height:0;display:flex;align-items:stretch}'
+  /* Card width: calc can't be set in Designer */
+  + '.home-work_item{width:calc(100vw - 5rem)}'
   + '.home-work_list{'
   +   'animation:ahWorkScroll linear both;'
   +   'animation-timeline:--ah-work-scroll;'
