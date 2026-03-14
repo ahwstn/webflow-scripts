@@ -222,9 +222,27 @@
     });
   }
 
-  /* ===== Featured work — horizontal scroll ===== */
-  /* Handled entirely by CSS view-timeline in ahCss.js.
-     No JS needed. Firefox falls back to scroll-snap. */
+  /* ===== Featured work — horizontal scroll snap ===== */
+  /* CSS view-timeline handles the animation (ahCss.js).
+     GSAP ScrollTrigger adds snap so scroll locks to each card. */
+  var workWrapper = document.querySelector('.home-work_wrapper');
+  var workCards = workWrapper ? workWrapper.querySelectorAll('.home-work_item') : [];
+
+  if (workCards.length > 1 && window.gsap && window.ScrollTrigger && !rm) {
+    gsap.matchMedia().add('(min-width: 992px)', function () {
+      ScrollTrigger.create({
+        trigger: workWrapper,
+        start: 'top top',
+        end: 'bottom bottom',
+        snap: {
+          snapTo: 1 / (workCards.length - 1),
+          duration: { min: 0.2, max: 0.5 },
+          delay: 0.1,
+          ease: 'power1.inOut'
+        }
+      });
+    });
+  }
 
   /* ===== Bridge ScrambleText ===== */
   /* Decodes </ahwstn> from random terminal chars on scroll entry.

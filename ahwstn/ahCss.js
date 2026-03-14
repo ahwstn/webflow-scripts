@@ -205,15 +205,11 @@
   + '}'
 
   /* === Work horizontal scroll — view-timeline + animation (Designer can't do these) === */
-  /* Nav offset: calc/var can't be set in Designer */
-  + '.home-work_viewport{top:var(--nav-height);height:calc(100vh - var(--nav-height))}'
   + '.home-work_wrapper{'
   +   'view-timeline-name:--ah-work-scroll;'
   +   'view-timeline-axis:block'
   + '}'
   + '.home-work_viewport .w-dyn-list{flex:1;min-height:0;display:flex;align-items:stretch}'
-  /* Card width: calc can't be set in Designer */
-  + '.home-work_item{width:calc(100vw - 5rem)}'
   + '.home-work_list{'
   +   'animation:ahWorkScroll linear both;'
   +   'animation-timeline:--ah-work-scroll;'
