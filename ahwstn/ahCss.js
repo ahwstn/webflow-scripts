@@ -1,6 +1,6 @@
 /**
  * ahCss.js — CSS Injection (Header)
- * @version 1.4.0
+ * @version 1.6.0
  * @cdn https://cdn.jsdelivr.net/gh/ahwstn/webflow-scripts@main/ahwstn/ahCss.min.js
  *
  * JS-injected <style> for things the Webflow Designer genuinely cannot do:
@@ -25,6 +25,11 @@
  *         texture + orange radial glow), staggered scroll entrance.
  * v1.4.0: Service tilt cards — frosted glass, perspective, dot-grid surface,
  *         cursor-following orange glow, sibling dim, container flex ordering.
+ * v1.4.1: Dropped custom-tools card accent (two cards only: Shopify + Webflow).
+ *         Toned down cursor glow (.04) + border hover (.15), slower transitions.
+ * v1.5.0: Smooth scroll, removed work sibling dim (now fullscreen sticky cards).
+ * v1.6.0: Pinned stacking cards — desktop absolute layout, header z-index,
+ *         reduced motion fallback. Replaces CSS sticky approach.
  */
 (function () {
   'use strict';
@@ -42,6 +47,9 @@
   + '@supports not (transition-timing-function:linear(0,1)){'
   +   ':root{--spring-smooth:cubic-bezier(.4,0,.2,1);--spring-active:cubic-bezier(.175,.885,.32,1.275)}'
   + '}'
+
+  /* === Smooth scroll (respects reduced-motion via separate rule below) === */
+  + 'html{scroll-behavior:smooth}'
 
   /* === Page-wrapper overflow-x:clip (prevents horizontal scroll, keeps sticky working) === */
   + '.page-wrapper{overflow-x:clip!important;overflow-y:visible!important}'
@@ -195,14 +203,22 @@
   +   '.home-services_list:has(.home-services_item:hover) .home-services_item:hover{opacity:1;border-left-color:#E85D04}'
   + '}'
 
-  /* === Work list — sibling dim on hover === */
-  + '@media(hover:hover){'
-  +   '.home-work_item{transition:opacity .4s var(--expo-out)}'
-  +   '.home-work_list:has(.home-work_item:hover) .home-work_item{opacity:.4}'
-  +   '.home-work_list:has(.home-work_item:hover) .home-work_item:hover{opacity:1}'
+  /* === Work pinned stacking cards — desktop only === */
+  + '@media(min-width:992px){'
+  +   '.section_home-work{height:100dvh;display:flex;flex-direction:column}'
+  +   '.home-work_header{position:relative;z-index:10;flex-shrink:0}'
+  +   '.home-work_list{position:relative;flex:1;overflow:hidden}'
+  +   '.home-work_item{'
+  +     'position:absolute;top:0;left:0;right:0;bottom:0;'
+  +     'height:100%;will-change:transform'
+  +   '}'
+  +   '.home-work_item:nth-child(1){z-index:1}'
+  +   '.home-work_item:nth-child(2){z-index:2}'
+  +   '.home-work_item:nth-child(3){z-index:3}'
+  +   '.home-work_item:not(:first-child){transform:translateY(100%)}'
   + '}'
 
-  /* === Work hover image — cursor-following reveal === */
+  /* === Work hover image — cursor-following reveal (saved for /work listing page) === */
   + '.home-work_image{'
   +   'position:fixed;'
   +   'top:0;left:0;'
@@ -270,15 +286,12 @@
   +   '--card-accent:232,93,4;'
   +   'backdrop-filter:blur(16px);'
   +   '-webkit-backdrop-filter:blur(16px);'
-  +   'transition:border-color .5s var(--expo-out),'
-  +     'box-shadow .5s var(--expo-out),'
-  +     'transform .5s var(--expo-out),'
-  +     'opacity .4s var(--expo-out)'
+  +   'transition:border-color .8s var(--expo-out),'
+  +     'opacity .6s var(--expo-out)'
   + '}'
   /* Per-card accent colours */
   + '.home-services_card.is-shopify{--card-accent:232,93,4}'
   + '.home-services_card.is-webflow{--card-accent:107,70,193}'
-  + '.home-services_card.is-custom{--card-accent:200,200,200}'
 
   /* === Service card surface — dot-grid texture === */
   + '.home-services_card-surface{'
@@ -290,11 +303,11 @@
   + '@media(hover:hover){'
   +   '.home-services_card:hover .home-services_card-surface{'
   +     'background-image:'
-  +       'radial-gradient(circle at var(--card-glow-x) var(--card-glow-y),rgba(var(--card-accent),.08) 0%,transparent 60%),'
+  +       'radial-gradient(circle at var(--card-glow-x) var(--card-glow-y),rgba(var(--card-accent),.015) 0%,rgba(var(--card-accent),.008) 40%,transparent 80%),'
   +       'radial-gradient(circle,rgba(255,255,255,.05) 1px,transparent 1px);'
   +     'background-size:100% 100%,4px 4px'
   +   '}'
-  +   '.home-services_card:hover{border-color:rgba(var(--card-accent),.3)}'
+  +   '.home-services_card:hover{border-color:rgba(var(--card-accent),.15)}'
   + '}'
 
   /* === Service cards — sibling dim on hover === */
@@ -308,10 +321,13 @@
 
   /* === Reduced motion: disable all animations === */
   + '@media(prefers-reduced-motion:reduce){'
+  +   'html{scroll-behavior:auto}'
   +   '.home-hero_heading,.home-hero_subline{opacity:1}'
   +   + '[data-ah-reveal]{opacity:1;animation:none;transform:none}'
   +   + '.bridge_tag{animation:none;background:none;-webkit-text-fill-color:#F2F2F2}'
   +   + '.card_wrapper{transition:none}'
+  +   + '.section_home-work{height:auto}'
+  +   + '.home-work_item{position:static;transform:none!important;will-change:auto}'
   +   + '.home-services_item,.home-work_item,.home-services_card{transition:none}'
   +   + '.home-services_card{transform:none!important;will-change:auto}'
   +   + '.home-services_pill{opacity:1;animation:none}'

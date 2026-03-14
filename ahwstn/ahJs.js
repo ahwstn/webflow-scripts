@@ -1,6 +1,6 @@
 /**
  * ahJs.js — Behavioural JS (Footer, defer)
- * @version 1.3.0
+ * @version 1.5.0
  * @cdn https://cdn.jsdelivr.net/gh/ahwstn/webflow-scripts@main/ahwstn/ahJs.min.js
  *
  * Vanilla JS + GSAP (loaded via Site Settings: ScrollTrigger, SplitText).
@@ -11,6 +11,10 @@
  *         bridge ScrambleText decode on scroll entry.
  * v1.2.0: Service pill cursor-following glow (sets --pill-x/--pill-y).
  * v1.3.0: Service card 3D tilt (Config E — ±4°, cursor glow, orange shadow).
+ * v1.3.1: GSAP-driven tilt — 0.6s follow lag, 1.2s ambient settle, softer shadow.
+ * v1.4.0: Featured work sticky card scroll-snap (ScrollTrigger snap).
+ * v1.5.0: Pinned stacking cards — GSAP pin + scrubbed timeline replaces
+ *         CSS sticky approach. Cards slide up to cover previous card.
  */
 (function () {
   'use strict';
@@ -182,7 +186,7 @@
   var tiltGrid = document.querySelector('.home-services_cards');
   var tiltCards = tiltGrid ? tiltGrid.querySelectorAll('.home-services_card') : [];
 
-  if (tiltCards.length && matchMedia('(hover:hover)').matches && !rm) {
+  if (tiltCards.length && window.gsap && matchMedia('(hover:hover)').matches && !rm) {
     tiltCards.forEach(function (card) {
       card.addEventListener('mousemove', function (e) {
         var r = card.getBoundingClientRect();
@@ -190,20 +194,71 @@
         var y = (e.clientY - r.top) / r.height;
         var rx = (0.5 - y) * 8;
         var ry = (x - 0.5) * 8;
-        card.style.transform = 'rotateX(' + rx + 'deg) rotateY(' + ry + 'deg)';
-        var sx = (x - 0.5) * 20;
-        var sy = (y - 0.5) * 20;
+        var sx = (x - 0.5) * 12;
+        var sy = (y - 0.5) * 12;
         var accent = getComputedStyle(card).getPropertyValue('--card-accent').trim() || '232,93,4';
-        card.style.boxShadow = sx + 'px ' + sy + 'px 40px rgba(' + accent + ',.12)';
+        gsap.to(card, {
+          rotateX: rx,
+          rotateY: ry,
+          boxShadow: sx + 'px ' + sy + 'px 80px rgba(' + accent + ',.06)',
+          duration: 0.6,
+          ease: 'power2.out',
+          overwrite: 'auto'
+        });
         card.style.setProperty('--card-glow-x', (x * 100) + '%');
         card.style.setProperty('--card-glow-y', (y * 100) + '%');
       });
       card.addEventListener('mouseleave', function () {
-        card.style.transform = '';
-        card.style.boxShadow = '';
+        gsap.to(card, {
+          rotateX: 0,
+          rotateY: 0,
+          boxShadow: '0px 0px 80px rgba(0,0,0,0)',
+          duration: 1.2,
+          ease: 'power3.out',
+          overwrite: 'auto'
+        });
         card.style.setProperty('--card-glow-x', '50%');
         card.style.setProperty('--card-glow-y', '50%');
       });
+    });
+  }
+
+  /* ===== Featured work — pinned stacking cards ===== */
+  /* Section pins to viewport; cards slide up to cover the previous card.
+     GSAP ScrollTrigger pin + scrubbed timeline. Desktop only via matchMedia. */
+  var workSection = document.querySelector('.section_home-work');
+  var workList = workSection ? workSection.querySelector('.home-work_list') : null;
+  var workCards = workList ? workList.querySelectorAll('.home-work_item') : [];
+
+  if (workCards.length > 1 && window.gsap && window.ScrollTrigger && !rm) {
+    var mm = gsap.matchMedia();
+
+    mm.add('(min-width: 992px)', function () {
+      var tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: workSection,
+          start: 'top top',
+          end: '+=' + (workCards.length * 100) + 'vh',
+          scrub: 1,
+          pin: true,
+          pinSpacing: true,
+          anticipatePin: 1,
+          snap: {
+            snapTo: 1 / (workCards.length - 1),
+            duration: { min: 0.2, max: 0.5 },
+            delay: 0.1,
+            ease: 'power1.inOut'
+          }
+        }
+      });
+
+      for (var i = 1; i < workCards.length; i++) {
+        tl.to({}, { duration: 0.5 });
+        tl.to(workCards[i], {
+          y: 0, duration: 1, ease: 'none'
+        });
+      }
+      tl.to({}, { duration: 0.5 });
     });
   }
 
