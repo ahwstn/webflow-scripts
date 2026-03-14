@@ -40,9 +40,7 @@
     +   'background-color:transparent;'
     +   'border-color:#F2F2F2'
     + '}'
-    + '@media(hover:hover){'
-    +   'body.ah-cursor-active,body.ah-cursor-active *{cursor:none!important}'
-    + '}'
+    /* cursor:none handled by ahCss.js (header) for instant hide */
   ;
   document.head.appendChild(s);
 
@@ -54,11 +52,12 @@
   document.body.appendChild(cursor);
 
   /* --- Position tracking — instant, no lag --- */
+  var cursorVisible = false;
   document.addEventListener('mousemove', function (e) {
     gsap.set(cursor, { x: e.clientX, y: e.clientY });
 
-    if (!document.body.classList.contains('ah-cursor-active')) {
-      document.body.classList.add('ah-cursor-active');
+    if (!cursorVisible) {
+      cursorVisible = true;
       gsap.to(cursor, { opacity: 1, duration: 0.3 });
     }
   });

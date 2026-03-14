@@ -333,6 +333,11 @@
   /* === Process line — orange slash separators === */
   + '.home-proof_slash{color:#E85D04;font-weight:600}'
 
+  /* === Custom cursor — hide system cursor immediately (header script, no flash) === */
+  + '@media(hover:hover) and (prefers-reduced-motion:no-preference){'
+  +   'body,body *{cursor:none!important}'
+  + '}'
+
   /* === Reduced motion: disable all animations === */
   + '@media(prefers-reduced-motion:reduce){'
   +   'html{scroll-behavior:auto}'
