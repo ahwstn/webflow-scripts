@@ -221,7 +221,7 @@
   + '}'
   + '@keyframes ahWorkScroll{'
   +   'from{transform:translateX(0)}'
-  +   'to{transform:translateX(calc(-100% + 100vw))}'
+  +   'to{transform:translateX(calc(-100% + 100vw - 5rem))}'
   + '}'
   /* Firefox fallback — no view-timeline support */
   + '@supports not (view-timeline-name:--test){'
