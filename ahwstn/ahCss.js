@@ -1,6 +1,6 @@
 /**
  * ahCss.js — CSS Injection (Header)
- * @version 1.6.0
+ * @version 1.7.0
  * @cdn https://cdn.jsdelivr.net/gh/ahwstn/webflow-scripts@main/ahwstn/ahCss.min.js
  *
  * JS-injected <style> for things the Webflow Designer genuinely cannot do:
@@ -30,6 +30,7 @@
  * v1.5.0: Smooth scroll, removed work sibling dim (now fullscreen sticky cards).
  * v1.6.0: Work horizontal scroll — CSS view-timeline, sticky viewport,
  *         Firefox scroll-snap fallback, reduced motion. Replaces stacking cards.
+ * v1.7.0: Lenis smooth scroll CSS rules, removed native scroll-behavior:smooth.
  */
 (function () {
   'use strict';
@@ -49,8 +50,12 @@
   +   ':root{--spring-smooth:cubic-bezier(.4,0,.2,1);--spring-active:cubic-bezier(.175,.885,.32,1.275)}'
   + '}'
 
-  /* === Smooth scroll (respects reduced-motion via separate rule below) === */
-  + 'html{scroll-behavior:smooth}'
+  /* === Lenis smooth scroll === */
+  + 'html.lenis,html.lenis body{height:auto}'
+  + '.lenis.lenis-smooth{scroll-behavior:auto}'
+  + '.lenis.lenis-smooth [data-lenis-prevent]{overscroll-behavior:contain}'
+  + '.lenis.lenis-stopped{overflow:hidden}'
+  + '.lenis.lenis-scrolling iframe{pointer-events:none}'
 
   /* === Page-wrapper overflow-x:clip (prevents horizontal scroll, keeps sticky working) === */
   + '.page-wrapper{overflow-x:clip!important;overflow-y:visible!important}'

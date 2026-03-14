@@ -1,6 +1,6 @@
 /**
  * ahJs.js — Behavioural JS (Footer, defer)
- * @version 1.5.0
+ * @version 1.6.0
  * @cdn https://cdn.jsdelivr.net/gh/ahwstn/webflow-scripts@main/ahwstn/ahJs.min.js
  *
  * Vanilla JS + GSAP (loaded via Site Settings: ScrollTrigger, SplitText).
@@ -14,11 +14,27 @@
  * v1.3.1: GSAP-driven tilt — 0.6s follow lag, 1.2s ambient settle, softer shadow.
  * v1.4.0: Featured work sticky card scroll-snap (ScrollTrigger snap).
  * v1.5.0: Removed work scroll-snap (now CSS view-timeline in ahCss).
+ * v1.5.1: Snappier scroll snap — 20ms delay, power2.out ease, tighter duration.
+ * v1.6.0: Lenis smooth scroll init + GSAP ticker sync, nav overlay stop/start.
  */
 (function () {
   'use strict';
 
   var rm = matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  /* ===== Lenis smooth scroll ===== */
+  if (window.Lenis && window.gsap && window.ScrollTrigger) {
+    var lenis = new Lenis({
+      lerp: rm ? 1 : 0.06,
+      smoothWheel: !rm,
+      smoothTouch: false,
+      anchors: true
+    });
+    lenis.on('scroll', ScrollTrigger.update);
+    gsap.ticker.add(function (time) { lenis.raf(time * 1000); });
+    gsap.ticker.lagSmoothing(0);
+    window.lenis = lenis;
+  }
 
   /* ===== Hero SplitText word cascade ===== */
   var heroHeading = document.querySelector('.home-hero_heading');
@@ -95,6 +111,7 @@
       if (isOpen) {
         overlay.style.display = 'flex';
         document.body.style.overflow = 'hidden';
+        if (window.lenis) window.lenis.stop();
 
         if (!rm && window.gsap) {
           gsap.to(overlay, { opacity: 1, duration: 0.3, ease: 'power2.out' });
@@ -111,6 +128,7 @@
         }
       } else {
         document.body.style.overflow = '';
+        if (window.lenis) window.lenis.start();
 
         if (!rm && window.gsap) {
           gsap.to(overlay, {
@@ -236,9 +254,9 @@
         end: 'bottom bottom',
         snap: {
           snapTo: 1 / (workCards.length - 1),
-          duration: { min: 0.2, max: 0.5 },
-          delay: 0.1,
-          ease: 'power1.inOut'
+          duration: { min: 0.1, max: 0.3 },
+          delay: 0.02,
+          ease: 'power2.out'
         }
       });
     });
