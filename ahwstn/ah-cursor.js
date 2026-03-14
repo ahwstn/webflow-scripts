@@ -25,7 +25,7 @@
   s.textContent = ''
     + '.ah-cursor{'
     +   'position:fixed;top:0;left:0;'
-    +   'width:20px;height:20px;'
+    +   'width:10px;height:10px;'
     +   'background-color:#F2F2F2;'
     +   'mix-blend-mode:difference;'
     +   'pointer-events:none;'
@@ -53,13 +53,9 @@
   cursor.style.opacity = '0';
   document.body.appendChild(cursor);
 
-  /* --- Position tracking via GSAP quickTo --- */
-  var xTo = gsap.quickTo(cursor, 'x', { duration: 0.35, ease: 'power2.out' });
-  var yTo = gsap.quickTo(cursor, 'y', { duration: 0.35, ease: 'power2.out' });
-
+  /* --- Position tracking — instant, no lag --- */
   document.addEventListener('mousemove', function (e) {
-    xTo(e.clientX);
-    yTo(e.clientY);
+    gsap.set(cursor, { x: e.clientX, y: e.clientY });
 
     if (!document.body.classList.contains('ah-cursor-active')) {
       document.body.classList.add('ah-cursor-active');
