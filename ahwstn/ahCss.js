@@ -28,8 +28,8 @@
  * v1.4.1: Dropped custom-tools card accent (two cards only: Shopify + Webflow).
  *         Toned down cursor glow (.04) + border hover (.15), slower transitions.
  * v1.5.0: Smooth scroll, removed work sibling dim (now fullscreen sticky cards).
- * v1.6.0: Pinned stacking cards — desktop absolute layout, header z-index,
- *         reduced motion fallback. Replaces CSS sticky approach.
+ * v1.6.0: Work horizontal scroll — CSS view-timeline, sticky viewport,
+ *         Firefox scroll-snap fallback, reduced motion. Replaces stacking cards.
  */
 (function () {
   'use strict';
@@ -203,21 +203,40 @@
   +   '.home-services_list:has(.home-services_item:hover) .home-services_item:hover{opacity:1;border-left-color:#E85D04}'
   + '}'
 
-  /* === Work pinned stacking cards — desktop only === */
+  /* === Work horizontal scroll — desktop only (CSS view-timeline) === */
   + '@media(min-width:992px){'
-  +   '.section_home-work{height:100dvh;display:flex;flex-direction:column}'
-  +   '.section_home-work>.padding-global{display:flex;flex-direction:column;flex:1;min-height:0}'
-  +   '.section_home-work .w-dyn-list{display:flex;flex-direction:column;flex:1;min-height:0}'
-  +   '.home-work_header{position:relative;z-index:10;flex-shrink:0}'
-  +   '.home-work_list{position:relative;flex:1;overflow:hidden}'
-  +   '.home-work_item{'
-  +     'position:absolute;top:0;left:0;right:0;bottom:0;'
-  +     'height:100%;will-change:transform'
+  +   '.section_home-work{'
+  +     'position:relative;'
+  +     'height:300vh;'
+  +     'view-timeline-name:--ah-work-scroll;'
+  +     'view-timeline-axis:block'
   +   '}'
-  +   '.home-work_item:nth-child(1){z-index:1}'
-  +   '.home-work_item:nth-child(2){z-index:2}'
-  +   '.home-work_item:nth-child(3){z-index:3}'
-  +   '.home-work_item:not(:first-child){transform:translateY(100%)}'
+  +   '.section_home-work>.padding-global{'
+  +     'position:sticky;top:0;height:100vh;'
+  +     'display:flex;flex-direction:column;overflow:clip'
+  +   '}'
+  +   '.home-work_header{position:relative;z-index:10;flex-shrink:0}'
+  +   '.section_home-work .w-dyn-list{flex:1;min-height:0;display:flex;align-items:stretch}'
+  +   '.home-work_list{'
+  +     'display:flex;flex-direction:row;gap:2rem;align-items:stretch;'
+  +     'animation:ahWorkScroll linear both;'
+  +     'animation-timeline:--ah-work-scroll;'
+  +     'animation-range:contain 0% contain 100%'
+  +   '}'
+  +   '.home-work_item{flex:0 0 min(80vw,900px);height:auto}'
+  + '}'
+  + '@keyframes ahWorkScroll{'
+  +   'from{transform:translateX(0)}'
+  +   'to{transform:translateX(calc(-100% + 100vw))}'
+  + '}'
+  /* Firefox fallback — no view-timeline support */
+  + '@supports not (view-timeline-name:--test){'
+  +   '@media(min-width:992px){'
+  +     '.section_home-work{height:auto}'
+  +     '.section_home-work>.padding-global{position:relative;height:auto;overflow:visible}'
+  +     '.home-work_list{animation:none;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}'
+  +     '.home-work_item{scroll-snap-align:start}'
+  +   '}'
   + '}'
 
   /* === Work hover image — cursor-following reveal (saved for /work listing page) === */
@@ -329,7 +348,9 @@
   +   + '.bridge_tag{animation:none;background:none;-webkit-text-fill-color:#F2F2F2}'
   +   + '.card_wrapper{transition:none}'
   +   + '.section_home-work{height:auto}'
-  +   + '.home-work_item{position:static;transform:none!important;will-change:auto}'
+  +   + '.section_home-work>.padding-global{position:relative;height:auto;overflow:visible}'
+  +   + '.home-work_list{animation:none!important;flex-direction:column}'
+  +   + '.home-work_item{flex:none}'
   +   + '.home-services_item,.home-work_item,.home-services_card{transition:none}'
   +   + '.home-services_card{transform:none!important;will-change:auto}'
   +   + '.home-services_pill{opacity:1;animation:none}'

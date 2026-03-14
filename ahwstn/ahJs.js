@@ -13,8 +13,7 @@
  * v1.3.0: Service card 3D tilt (Config E — ±4°, cursor glow, orange shadow).
  * v1.3.1: GSAP-driven tilt — 0.6s follow lag, 1.2s ambient settle, softer shadow.
  * v1.4.0: Featured work sticky card scroll-snap (ScrollTrigger snap).
- * v1.5.0: Pinned stacking cards — GSAP pin + scrubbed timeline replaces
- *         CSS sticky approach. Cards slide up to cover previous card.
+ * v1.5.0: Removed work scroll-snap (now CSS view-timeline in ahCss).
  */
 (function () {
   'use strict';
@@ -223,44 +222,9 @@
     });
   }
 
-  /* ===== Featured work — pinned stacking cards ===== */
-  /* Section pins to viewport; cards slide up to cover the previous card.
-     GSAP ScrollTrigger pin + scrubbed timeline. Desktop only via matchMedia. */
-  var workSection = document.querySelector('.section_home-work');
-  var workList = workSection ? workSection.querySelector('.home-work_list') : null;
-  var workCards = workList ? workList.querySelectorAll('.home-work_item') : [];
-
-  if (workCards.length > 1 && window.gsap && window.ScrollTrigger && !rm) {
-    var mm = gsap.matchMedia();
-
-    mm.add('(min-width: 992px)', function () {
-      var tl = gsap.timeline({
-        scrollTrigger: {
-          trigger: workSection,
-          start: 'top top',
-          end: '+=' + (workCards.length * 100) + 'vh',
-          scrub: 1,
-          pin: true,
-          pinSpacing: true,
-          anticipatePin: 1,
-          snap: {
-            snapTo: 1 / (workCards.length - 1),
-            duration: { min: 0.2, max: 0.5 },
-            delay: 0.1,
-            ease: 'power1.inOut'
-          }
-        }
-      });
-
-      for (var i = 1; i < workCards.length; i++) {
-        tl.to({}, { duration: 0.5 });
-        tl.to(workCards[i], {
-          y: 0, duration: 1, ease: 'none'
-        });
-      }
-      tl.to({}, { duration: 0.5 });
-    });
-  }
+  /* ===== Featured work — horizontal scroll ===== */
+  /* Handled entirely by CSS view-timeline in ahCss.js.
+     No JS needed. Firefox falls back to scroll-snap. */
 
   /* ===== Bridge ScrambleText ===== */
   /* Decodes </ahwstn> from random terminal chars on scroll entry.
