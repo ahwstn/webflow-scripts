@@ -208,8 +208,7 @@
   +   'content:"";'
   +   'position:absolute;'
   +   'inset:0;'
-  +   'background:#F2F2F2;'
-  +   'mix-blend-mode:difference;'
+  +   'background:rgba(255,255,255,.05);'
   +   'transform-origin:left;'
   +   'transform:scaleX(0);'
   +   'pointer-events:none;'
@@ -223,7 +222,7 @@
   +     'top:auto;'
   +     'bottom:0;'
   +     'height:2px;'
-  +     'mix-blend-mode:normal'
+  +     'background:#F2F2F2'
   +   '}'
   + '}'
 
