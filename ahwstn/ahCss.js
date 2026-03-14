@@ -1,6 +1,6 @@
 /**
  * ahCss.js — CSS Injection (Header)
- * @version 1.7.0
+ * @version 1.7.1
  * @cdn https://cdn.jsdelivr.net/gh/ahwstn/webflow-scripts@main/ahwstn/ahCss.min.js
  *
  * JS-injected <style> for things the Webflow Designer genuinely cannot do:
@@ -31,6 +31,7 @@
  * v1.6.0: Work horizontal scroll — CSS view-timeline, sticky viewport,
  *         Firefox scroll-snap fallback, reduced motion. Replaces stacking cards.
  * v1.7.0: Lenis smooth scroll CSS rules, removed native scroll-behavior:smooth.
+ * v1.7.1: Scroll progress indicator — ::after on nav_wrapper, mix-blend-mode:difference.
  */
 (function () {
   'use strict';
@@ -202,6 +203,30 @@
   +   '-webkit-backdrop-filter:blur(12px)'
   + '}'
 
+  /* === Nav scroll progress indicator === */
+  + '.nav_wrapper::after{'
+  +   'content:"";'
+  +   'position:absolute;'
+  +   'inset:0;'
+  +   'background:#F2F2F2;'
+  +   'mix-blend-mode:difference;'
+  +   'transform-origin:left;'
+  +   'transform:scaleX(0);'
+  +   'pointer-events:none;'
+  +   'animation:ahNavProgress linear both;'
+  +   'animation-timeline:scroll()'
+  + '}'
+  + '@keyframes ahNavProgress{to{transform:scaleX(1)}}'
+  /* Mobile: thin line at bottom */
+  + '@media(max-width:991px){'
+  +   '.nav_wrapper::after{'
+  +     'top:auto;'
+  +     'bottom:0;'
+  +     'height:2px;'
+  +     'mix-blend-mode:normal'
+  +   '}'
+  + '}'
+
   /* === Services list — sibling dim on hover === */
   + '@media(hover:hover){'
   +   '.home-services_item{transition:opacity .4s var(--expo-out);border-left:2px solid transparent;padding-left:1.5rem}'
@@ -355,6 +380,7 @@
   +   + '.home-services_pill{background-image:none}'
   +   + '.nav_link::before,.nav_overlay-link::before{transition:none}'
   +   + '.button.is-primary::before,.button.is-ghost::after{transition:none}'
+  +   + '.nav_wrapper::after{animation:none;opacity:0}'
   + '}'
 
   ;
