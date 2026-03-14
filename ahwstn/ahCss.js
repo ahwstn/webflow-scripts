@@ -206,6 +206,8 @@
   /* === Work pinned stacking cards — desktop only === */
   + '@media(min-width:992px){'
   +   '.section_home-work{height:100dvh;display:flex;flex-direction:column}'
+  +   '.section_home-work>.padding-global{display:flex;flex-direction:column;flex:1;min-height:0}'
+  +   '.section_home-work .w-dyn-list{flex:1;min-height:0}'
   +   '.home-work_header{position:relative;z-index:10;flex-shrink:0}'
   +   '.home-work_list{position:relative;flex:1;overflow:hidden}'
   +   '.home-work_item{'
