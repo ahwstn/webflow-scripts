@@ -90,7 +90,7 @@
         stagger: 0.02,
         scrollTrigger: {
           trigger: '.section_home-statement',
-          start: 'top 80%',
+          start: 'top 50%',
           end: 'center center',
           scrub: 1
         }
