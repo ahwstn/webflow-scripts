@@ -1,21 +1,13 @@
 /**
  * ah-transitions.js — Barba.js Page Transitions
- * @version 1.0.0
+ * @version 2.5.0
  * @cdn https://cdn.ahwstn.com/ahwstn/ah-transitions.min.js
  *
- * Barba.js orchestrator: SPA-like page transitions with GSAP animation.
- * Manages the ah.* module lifecycle — destroy on leave, init on enter.
+ * Overlay wipe: charcoal bar sweeps UP covering old page, continues UP
+ * off the top revealing new page sitting underneath. One element, one direction.
  *
- * Exit: fade to 0 + scale to 0.97 (0.4s, power2.inOut).
- * Enter: fade in from 0 + slide up from 30px (0.4s, power2.out).
- * Reduced motion: instant swap, no animation.
- *
- * Depends on: Barba.js core, GSAP, window.ah module registry (ahJs.js).
- * Static-first: without this script, standard multi-page navigation works.
- *
- * v1.0.1: Fix: initPage() moved to `after` hook — old container must be removed
- *         before querySelector can find elements in the new container.
- * v1.0.0: Initial build — page transitions, module lifecycle, nav active sync.
+ * v2.5.0: Init new page BEFORE overlay lifts (hidden behind it). Slower timing.
+ * v2.4.0: Fix CSS/GSAP transform conflict. Destroy after overlay covers.
  */
 (function () {
   'use strict';
@@ -25,9 +17,35 @@
 
   var rm = matchMedia('(prefers-reduced-motion:reduce)').matches;
 
-  /* Page namespace → modules to destroy/init on transition.
-     Nav modules (navTypewriter, navScroll, mobileNav, themeToggle, cursor)
-     persist across transitions — they live outside the Barba container. */
+  /* --- Overlay --- */
+  var overlay = document.createElement('div');
+  overlay.className = 'ah-overlay';
+  overlay.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(overlay);
+
+  var s = document.createElement('style');
+  s.textContent = ''
+    + '.ah-overlay{'
+    +   'position:fixed;top:0;left:0;width:100%;height:100%;'
+    +   'background-color:#141414;'
+    +   'z-index:99999;'
+    +   'pointer-events:none'
+    + '}'
+    + '[data-theme="light"] .ah-overlay{background-color:#EEEEEC}';
+  document.head.appendChild(s);
+
+  gsap.set(overlay, { yPercent: 100 });
+
+  /* --- Easing --- */
+  var ease = 'power2.inOut';
+  if (window.CustomEase) {
+    CustomEase.create('ahWipe', '.645,.045,.355,1');
+    ease = 'ahWipe';
+  }
+
+  /* --- Modules --- */
+  var navModules = ['navScroll', 'mobileNav', 'themeToggle', 'navTypewriter'];
+
   var pageModules = {
     home:      ['lenis', 'hero', 'heroCanvas', 'statement', 'servicePills', 'serviceTilt',
                 'workHover', 'workReveal', 'bridgeScramble', 'footerCanvas'],
@@ -38,41 +56,39 @@
     contact:   ['lenis', 'footerCanvas']
   };
 
+  function getModules(ns) {
+    return (pageModules[ns] || []).concat(navModules);
+  }
+
   function destroyPage(ns) {
-    var modules = pageModules[ns] || [];
+    var modules = getModules(ns);
     for (var i = 0; i < modules.length; i++) {
       var m = ah[modules[i]];
       if (m && typeof m.destroy === 'function') m.destroy();
     }
-    /* Kill any orphaned ScrollTriggers */
     if (window.ScrollTrigger) {
       ScrollTrigger.getAll().forEach(function (t) { t.kill(); });
     }
   }
 
   function initPage(ns) {
-    var modules = pageModules[ns] || [];
+    var modules = getModules(ns);
     for (var i = 0; i < modules.length; i++) {
       var m = ah[modules[i]];
       if (m && typeof m.init === 'function') m.init();
     }
-    /* Rebind cursor work card listeners */
     if (ah.cursor && typeof ah.cursor.rebind === 'function') ah.cursor.rebind();
-    /* Sync nav active link */
     updateNavActive();
-    /* Reinit Webflow's own JS (forms, interactions) */
     reinitWebflow();
   }
 
   function updateNavActive() {
     var path = window.location.pathname;
     document.querySelectorAll('.nav_link').forEach(function (link) {
-      var href = link.getAttribute('href');
-      link.classList.toggle('w--current', href === path);
+      link.classList.toggle('w--current', link.getAttribute('href') === path);
     });
     document.querySelectorAll('.nav_overlay-link').forEach(function (link) {
-      var href = link.getAttribute('href');
-      link.classList.toggle('w--current', href === path);
+      link.classList.toggle('w--current', link.getAttribute('href') === path);
     });
   }
 
@@ -89,35 +105,52 @@
   barba.init({
     preventRunning: true,
     transitions: [{
-      name: 'default',
+      name: 'overlay-wipe',
+
       leave: function (data) {
-        destroyPage(data.current.namespace);
-        if (rm) return; /* instant swap for reduced motion */
-        return gsap.to(data.current.container, {
-          opacity: 0,
-          scale: 0.97,
-          duration: 0.4,
-          ease: 'power2.inOut'
-        });
+        if (rm) { destroyPage(data.current.namespace); return; }
+        if (window.lenis) window.lenis.stop();
+
+        return gsap.fromTo(overlay,
+          { yPercent: 100 },
+          {
+            yPercent: 0,
+            duration: 0.8,
+            ease: ease,
+            onComplete: function () {
+              destroyPage(data.current.namespace);
+            }
+          }
+        );
       },
+
       enter: function (data) {
         window.scrollTo(0, 0);
-        if (window.lenis) {
-          window.lenis.scrollTo(0, { immediate: true });
+        if (window.lenis) window.lenis.scrollTo(0, { immediate: true });
+
+        /* Remove old container so querySelector finds new page elements */
+        if (data.current.container && data.current.container.parentNode) {
+          data.current.container.parentNode.removeChild(data.current.container);
         }
-        if (rm) return; /* instant swap for reduced motion */
-        gsap.set(data.next.container, { opacity: 0, y: 30 });
-        return gsap.to(data.next.container, {
-          opacity: 1,
-          y: 0,
-          duration: 0.4,
-          ease: 'power2.out'
+
+        /* Init new page while overlay still covers — canvases, ScrollTriggers, etc. */
+        initPage(data.next.namespace);
+
+        if (rm) return;
+
+        /* Now lift the overlay to reveal the fully initialised page */
+        return gsap.to(overlay, {
+          yPercent: -100,
+          duration: 0.8,
+          ease: ease,
+          onComplete: function () {
+            gsap.set(overlay, { yPercent: 100 });
+          }
         });
       },
-      /* after: runs AFTER old container is removed from DOM.
-         Critical — querySelector must only find elements in the new container. */
-      after: function (data) {
-        initPage(data.next.namespace);
+
+      after: function () {
+        if (window.lenis) window.lenis.start();
       }
     }]
   });
