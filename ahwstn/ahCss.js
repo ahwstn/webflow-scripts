@@ -73,6 +73,8 @@
   + '}'
   + '[data-theme="light"] .home-services_card.is-shopify{--card-accent:211,84,0}'
   + '[data-theme="light"] .home-services_card.is-webflow{--card-accent:124,58,237}'
+  + '[data-theme="light"] .home-services_card{background-color:#1A1A1A;border-color:rgba(255,255,255,.08)}'
+  + '[data-theme="light"] .home-services_card *{color:#F2F2F2}'
   /* === Toggle transition (added/removed by JS, not on page load) === */
   + '[data-theme-transitioning] *{'
   +   'transition:background-color .3s ease,color .3s ease,border-color .3s ease!important'
