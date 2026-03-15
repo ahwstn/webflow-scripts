@@ -1,6 +1,6 @@
 /**
  * ahJs.js — Behavioural JS (Footer, defer)
- * @version 1.8.0
+ * @version 1.9.0
  * @cdn https://cdn.jsdelivr.net/gh/ahwstn/webflow-scripts@main/ahwstn/ahJs.min.js
  *
  * Vanilla JS + GSAP (loaded via Site Settings: ScrollTrigger, SplitText).
@@ -18,6 +18,7 @@
  * v1.6.0: Lenis smooth scroll init + GSAP ticker sync, nav overlay stop/start.
  * v1.7.0: Removed work scroll snap — fought with Lenis, CSS view-timeline is enough.
  * v1.8.0: Theme toggle button handler, aria-label update, transition class.
+ * v1.9.0: Homepage statement char-scrub (SplitText + ScrollTrigger scrub).
  */
 (function () {
   'use strict';
@@ -71,6 +72,29 @@
         gsap.set(split.words, { opacity: 1, y: 0 });
         if (heroSubline) gsap.set(heroSubline, { opacity: 1 });
       }
+    });
+  }
+
+  /* ===== Statement char-scrub ===== */
+  /* Each character fades from 0.15 to 1.0 opacity as you scroll through the section.
+     SplitText splits into chars, ScrollTrigger scrubs the timeline. */
+  var statementText = document.querySelector('.home-statement_text');
+
+  if (statementText && window.gsap && window.SplitText && window.ScrollTrigger && !rm) {
+    document.fonts.ready.then(function () {
+      var split = new SplitText(statementText, { type: 'chars', aria: false });
+      gsap.set(split.chars, { opacity: 0.15 });
+
+      gsap.to(split.chars, {
+        opacity: 1,
+        stagger: 0.03,
+        scrollTrigger: {
+          trigger: '.section_home-statement',
+          start: 'top 80%',
+          end: 'bottom 30%',
+          scrub: 1
+        }
+      });
     });
   }
 
