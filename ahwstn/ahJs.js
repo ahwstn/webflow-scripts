@@ -91,7 +91,7 @@
         scrollTrigger: {
           trigger: '.section_home-statement',
           start: 'top 80%',
-          end: 'bottom 30%',
+          end: 'center center',
           scrub: 1
         }
       });
