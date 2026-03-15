@@ -68,8 +68,8 @@
   +   '--ah-dot-grid:rgba(0,0,0,.06);'
   +   '--ah-dot-grid-hover:rgba(0,0,0,.08);'
   +   '--ah-nav-wash:rgba(0,0,0,.04);'
-  +   '--ah-nav-line:#1A1A1A;'
-  +   '--ah-cursor-color:#1A1A1A'
+  +   '--ah-nav-line:#1A1A1A'
+  /* cursor stays #F2F2F2 — mix-blend-mode:difference auto-inverts in both themes */
   + '}'
   + '[data-theme="light"] .home-services_card.is-shopify{--card-accent:211,84,0}'
   + '[data-theme="light"] .home-services_card.is-webflow{--card-accent:124,58,237}'

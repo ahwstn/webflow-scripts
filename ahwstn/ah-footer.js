@@ -114,7 +114,7 @@
     oc.fillRect(0, 0, w, h);
     oc.font = FONT;
     oc.letterSpacing = LETTER_SPACING;
-    oc.fillStyle = TEXT_COLOR;
+    oc.fillStyle = '#fff'; /* always white — mask detection only, not display colour */
     oc.textAlign = 'left';
     oc.textBaseline = 'middle';
 
