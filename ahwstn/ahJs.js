@@ -1,6 +1,6 @@
 /**
  * ahJs.js — Behavioural JS (Footer, defer)
- * @version 1.6.0
+ * @version 1.7.0
  * @cdn https://cdn.jsdelivr.net/gh/ahwstn/webflow-scripts@main/ahwstn/ahJs.min.js
  *
  * Vanilla JS + GSAP (loaded via Site Settings: ScrollTrigger, SplitText).
@@ -16,6 +16,7 @@
  * v1.5.0: Removed work scroll-snap (now CSS view-timeline in ahCss).
  * v1.5.1: Snappier scroll snap — 20ms delay, power2.out ease, tighter duration.
  * v1.6.0: Lenis smooth scroll init + GSAP ticker sync, nav overlay stop/start.
+ * v1.7.0: Removed work scroll snap — fought with Lenis, CSS view-timeline is enough.
  */
 (function () {
   'use strict';
@@ -236,28 +237,6 @@
         });
         card.style.setProperty('--card-glow-x', '50%');
         card.style.setProperty('--card-glow-y', '50%');
-      });
-    });
-  }
-
-  /* ===== Featured work — horizontal scroll snap ===== */
-  /* CSS view-timeline handles the animation (ahCss.js).
-     GSAP ScrollTrigger adds snap so scroll locks to each card. */
-  var workWrapper = document.querySelector('.home-work_wrapper');
-  var workCards = workWrapper ? workWrapper.querySelectorAll('.home-work_item') : [];
-
-  if (workCards.length > 1 && window.gsap && window.ScrollTrigger && !rm) {
-    gsap.matchMedia().add('(min-width: 992px)', function () {
-      ScrollTrigger.create({
-        trigger: workWrapper,
-        start: 'top top',
-        end: 'bottom bottom',
-        snap: {
-          snapTo: 1 / (workCards.length - 1),
-          duration: { min: 0.1, max: 0.3 },
-          delay: 0.02,
-          ease: 'power2.out'
-        }
       });
     });
   }
