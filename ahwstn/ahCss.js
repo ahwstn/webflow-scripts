@@ -242,7 +242,7 @@
   + '.home-work_list{'
   +   'animation:ahWorkScroll linear both;'
   +   'animation-timeline:--ah-work-scroll;'
-  +   'animation-range:contain 0% contain 100%'
+  +   'animation-range:contain 10% contain 90%'
   + '}'
   + '@keyframes ahWorkScroll{'
   +   'from{transform:translateX(0)}'
