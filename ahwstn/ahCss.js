@@ -1,6 +1,6 @@
 /**
  * ahCss.js — CSS Injection (Header)
- * @version 1.8.0
+ * @version 2.0.0
  * @cdn https://cdn.jsdelivr.net/gh/ahwstn/webflow-scripts@main/ahwstn/ahCss.min.js
  *
  * JS-injected <style> for things the Webflow Designer genuinely cannot do:
@@ -34,6 +34,9 @@
  * v1.7.1: Scroll progress indicator — ::after on nav_wrapper, rgba white wash.
  * v1.8.0: Light/dark theme support — CSS custom properties for all theme-sensitive
  *         values, [data-theme="light"] overrides, toggle button styles.
+ * v2.0.0: Barba.js transition support — will-change on [data-barba="container"].
+ * v1.9.0: Work card info panel reveal — hidden by default, slides up on hover
+ *         (desktop) or tap (mobile). "+" button with frosted glass, rotate to "×".
  */
 (function () {
   'use strict';
@@ -118,12 +121,13 @@
   +   'transition:width .3s var(--expo-out),opacity .2s var(--expo-out)'
   + '}'
   + '.nav_link:hover::before,'
-  + '.nav_link.is-active::before{'
+  + '.nav_link.is-active::before,'
+  + '.nav_link.w--current::before{'
   +   'width:.65em;'
   +   'opacity:1'
   + '}'
   /* Active link text colour */
-  + '.nav_link.is-active{color:var(--ah-text-fill)}'
+  + '.nav_link.is-active,.nav_link.w--current{color:var(--ah-text-fill)}'
 
   /* === Nav overlay links — forward slash for active overlay link too === */
   + '.nav_overlay-link{position:relative}'
@@ -139,7 +143,8 @@
   +   'transition:width .3s var(--expo-out),opacity .2s var(--expo-out)'
   + '}'
   + '.nav_overlay-link:hover::before,'
-  + '.nav_overlay-link.is-active::before{'
+  + '.nav_overlay-link.is-active::before,'
+  + '.nav_overlay-link.w--current::before{'
   +   'width:.65em;'
   +   'opacity:1'
   + '}'
@@ -288,12 +293,70 @@
   +   'from{transform:translateX(0)}'
   +   'to{transform:translateX(calc(-100% + 100vw - 5rem))}'
   + '}'
+  /* Tablet/mobile: disable horizontal scroll, vertical stack */
+  + '@media(max-width:991px){'
+  +   '.home-work_wrapper{height:auto}'
+  +   '.home-work_viewport{position:static;height:auto;overflow:visible}'
+  +   '.home-work_viewport .w-dyn-list{flex-direction:column}'
+  +   '.home-work_list{animation:none;width:100%}'
+  +   '.home-work_content{transform:none;transition:none}'
+  + '}'
   /* Firefox fallback — no view-timeline support */
   + '@supports not (view-timeline-name:--test){'
   +   '.home-work_wrapper{height:auto}'
   +   '.home-work_viewport{position:static;height:auto;overflow:visible}'
   +   '.home-work_list{animation:none;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}'
   +   '.home-work_item{scroll-snap-align:start}'
+  + '}'
+
+  /* === Work card info panel — hidden by default, slides up on reveal === */
+  /* Positioning is native (style_tool). Only inject: transform default,
+     transitions with var(), backdrop-filter, state classes, media queries. */
+  + '.home-work_content{'
+  +   'transform:translateY(100%);'
+  +   'transition:transform .4s var(--expo-out)'
+  + '}'
+  /* Reveal button — backdrop-filter + transitions (not settable in Designer) */
+  + '.home-work_reveal-btn{'
+  +   'background:rgba(0,0,0,.4);'
+  +   'backdrop-filter:blur(8px);'
+  +   '-webkit-backdrop-filter:blur(8px);'
+  +   'transition:background .3s var(--expo-out),opacity .3s var(--expo-out)'
+  + '}'
+  /* Rotate inner text "+" → "×", not the button container */
+  + '.home-work_reveal-btn>*{display:block;transition:transform .3s var(--expo-out)}'
+  /* Image subtle zoom on reveal/hover */
+  + '.home-work_img{transition:transform 4s var(--expo-out)}'
+  + '.home-work_item.is-revealed .home-work_img{transform:scale(1.05)}'
+  + '@media(hover:hover){.home-work_item:hover .home-work_img{transform:scale(1.05)}}'
+  /* Overlay: native bg is 60% black. Scale down to ~20% effective by default,
+     fade to full 60% on reveal. background-image can't transition, opacity can. */
+  + '.home-work_overlay{opacity:.33;transition:opacity .4s var(--expo-out)}'
+  /* State class: reveal panel + rotate inner text when .is-revealed toggled by JS */
+  + '.home-work_item.is-revealed .home-work_content{transform:translateY(0)}'
+  + '.home-work_item.is-revealed .home-work_overlay{opacity:1}'
+  + '.home-work_item.is-revealed .home-work_reveal-btn{background:rgba(0,0,0,.6)}'
+  + '.home-work_item.is-revealed .home-work_reveal-btn>*{transform:rotate(45deg)}'
+  /* Desktop: hover reveals info panel, hide button (redundant — hover IS the reveal) */
+  + '@media(hover:hover){'
+  +   '.home-work_item:hover .home-work_content{transform:translateY(0)}'
+  +   '.home-work_item:hover .home-work_overlay{opacity:1}'
+  +   '.home-work_item:hover .home-work_reveal-btn{opacity:0;pointer-events:none}'
+  + '}'
+  /* Mobile: undo hover side-effects, only .is-revealed matters */
+  + '@media(hover:none){'
+  +   '.home-work_item:hover .home-work_reveal-btn{background:rgba(0,0,0,.4)}'
+  +   '.home-work_cell.is-last{padding-right:3.5rem}'
+  + '}'
+  /* Light theme overrides for reveal button */
+  + '[data-theme="light"] .home-work_reveal-btn{'
+  +   'background:rgba(255,255,255,.4);'
+  +   'border-color:rgba(0,0,0,.12);'
+  +   'color:#1A1A1A'
+  + '}'
+  + '[data-theme="light"] .home-work_item.is-revealed .home-work_reveal-btn,'
+  + '[data-theme="light"] .home-work_item:hover .home-work_reveal-btn{'
+  +   'background:rgba(255,255,255,.6)'
   + '}'
 
   /* === Work hover image — cursor-following reveal (saved for /work listing page) === */
@@ -402,24 +465,29 @@
   +   'body,body *{cursor:none!important}'
   + '}'
 
+  /* === Barba.js page transition container === */
+  + '[data-barba="container"]{will-change:opacity,transform}'
+
   /* === Reduced motion: disable all animations === */
   + '@media(prefers-reduced-motion:reduce){'
   +   'html{scroll-behavior:auto}'
   +   '.home-hero_heading,.home-hero_subline{opacity:1}'
-  +   + '[data-ah-reveal]{opacity:1;animation:none;transform:none}'
-  +   + '.bridge_tag{animation:none;background:none;-webkit-text-fill-color:var(--ah-text-fill)}'
-  +   + '.card_wrapper{transition:none}'
-  +   + '.home-work_wrapper{height:auto}'
-  +   + '.home-work_viewport{position:static;height:auto;overflow:visible}'
-  +   + '.home-work_list{animation:none!important;flex-direction:column}'
-  +   + '.home-work_item{width:100%;max-width:none}'
-  +   + '.home-services_item,.home-work_item,.home-services_card{transition:none}'
-  +   + '.home-services_card{transform:none!important;will-change:auto}'
-  +   + '.home-services_pill{opacity:1;animation:none}'
-  +   + '.home-services_pill{background-image:none}'
-  +   + '.nav_link::before,.nav_overlay-link::before{transition:none}'
-  +   + '.button.is-primary::before,.button.is-ghost::after{transition:none}'
-  +   + '.nav_wrapper::after{animation:none;opacity:0}'
+  +   '[data-ah-reveal]{opacity:1;animation:none;transform:none}'
+  +   '.bridge_tag{animation:none;background:none;-webkit-text-fill-color:var(--ah-text-fill)}'
+  +   '.card_wrapper{transition:none}'
+  +   '.home-work_wrapper{height:auto}'
+  +   '.home-work_viewport{position:static;height:auto;overflow:visible}'
+  +   '.home-work_list{animation:none!important;flex-direction:column}'
+  +   '.home-work_item{width:100%;max-width:none}'
+  +   '.home-services_item,.home-work_item,.home-services_card{transition:none}'
+  +   '.home-services_card{transform:none!important;will-change:auto}'
+  +   '.home-services_pill{opacity:1;animation:none}'
+  +   '.home-services_pill{background-image:none}'
+  +   '.nav_link::before,.nav_overlay-link::before{transition:none}'
+  +   '.button.is-primary::before,.button.is-ghost::after{transition:none}'
+  +   '.nav_wrapper::after{animation:none;opacity:0}'
+  +   '.home-work_content{transform:none;transition:none}'
+  +   '.home-work_reveal-btn{display:none}'
   + '}'
 
   ;

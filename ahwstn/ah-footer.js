@@ -1,7 +1,7 @@
 /**
  * ah-footer.js — Canvas CTA Footer + Hover Spotlight
- * @version 2.1.0
- * @cdn https://cdn.jsdelivr.net/gh/ahwstn/webflow-scripts@main/ahwstn/ah-footer.min.js
+ * @version 3.0.0
+ * @cdn https://cdn.ahwstn.com/ahwstn/ah-footer.min.js
  *
  * Canvas-based flickering dot-grid with multiline text mask ("Let's\nconnect"
  * in Space Grotesk 700). Cursor-following spotlight raises the flicker ceiling
@@ -13,285 +13,353 @@
  * Accessibility: canvas is aria-hidden (decorative). Hidden H2 heading
  * in DOM provides text alternative for screen readers (Query-AH-001).
  *
- * v1.0.0: Initial build — standalone (no AMH.register dependency).
- * v2.0.0: Hover spotlight — lerped cursor tracking, boosted flicker ceiling + rate.
+ * v3.0.0: Module pattern — ah.footerCanvas with init/destroy for Barba lifecycle.
+ *         DOM-gated: exits silently if .footer_canvas-wrap is absent.
  * v2.1.0: Theme-aware — reads dot/text colour from window.ahTheme, listens for themechange.
+ * v2.0.0: Hover spotlight — lerped cursor tracking, boosted flicker ceiling + rate.
+ * v1.0.0: Initial build — standalone (no AMH.register dependency).
  */
 (function () {
   'use strict';
 
-  var wrap = document.querySelector('.footer_canvas-wrap');
-  if (!wrap || wrap.querySelector('canvas')) return;
+  window.ah = window.ah || {};
 
-  /* --- Configuration --- */
-  var SQ = 3;            /* square size px */
-  var GAP = 5;           /* gap between squares px */
-  var STEP = SQ + GAP;
-  var FLICKER = 0.3;     /* base flicker rate (multiplied by deltaTime) */
-  var BASE_ALPHA = 0.1;
-  var MASK_BOOST = 2;
-  var MASK_FLOOR = 0.15;
-  var TEXT = "Let's\nconnect";
-  var FONT = '700 224px "Space Grotesk"';
-  var LETTER_SPACING = '-0.05em';
-  var LINE_HEIGHT = 0.6;
-  var TEXT_X_PAD = 38;   /* left padding to align with footer bar */
-  var TEXT_Y_PCT = 0.78; /* vertical position as fraction */
-  var tc = window.ahTheme ? window.ahTheme.colors[window.ahTheme.current] : null;
-  var COLOR_R = tc ? tc.dotR : 242;
-  var COLOR_G = tc ? tc.dotG : 242;
-  var COLOR_B = tc ? tc.dotB : 242;
-  var TEXT_COLOR = tc ? tc.text : '#fff';
+  ah.footerCanvas = {
+    _canvas: null,
+    _ctx: null,
+    _wrap: null,
+    _cols: 0,
+    _rows: 0,
+    _grid: null,
+    _textMask: null,
+    _spotMap: null,
+    _animId: null,
+    _lastTime: 0,
+    _isVisible: false,
+    _io: null,
+    _ro: null,
+    _themeHandler: null,
+    _mouseHandlers: [],
+    _fontLink: null,
+    _mouseX: -9999,
+    _mouseY: -9999,
+    _isHovered: false,
+    _smoothX: -9999,
+    _smoothY: -9999,
+    _colorR: 242,
+    _colorG: 242,
+    _colorB: 242,
+    _textColor: '#fff',
 
-  /* Hover spotlight */
-  var HOVER_RADIUS = 500;     /* px — spotlight radius */
-  var HOVER_ALPHA = 0.25;     /* peak alpha boost at cursor centre */
-  var HOVER_FALLOFF = 3;      /* spotlight edge curve (higher = tighter) */
-  var LERP_SPEED = 0.05;      /* cursor tracking smoothness (lower = more lag) */
-  var HOVER_FLICKER_MULT = 4; /* flicker rate multiplier inside spotlight */
+    /* Constants */
+    SQ: 3,
+    GAP: 5,
+    FLICKER: 0.3,
+    BASE_ALPHA: 0.1,
+    MASK_BOOST: 2,
+    MASK_FLOOR: 0.15,
+    TEXT: "Let's\nconnect",
+    FONT_WEIGHT: '700',
+    FONT_FAMILY: '"Space Grotesk"',
+    LETTER_SPACING: '-0.05em',
+    LINE_HEIGHT: 0.6,
+    TEXT_X_PAD: 38,
+    TEXT_Y_PCT: 0.78,
+    HOVER_RADIUS: 500,
+    HOVER_ALPHA: 0.25,
+    HOVER_FALLOFF: 3,
+    LERP_SPEED: 0.05,
+    HOVER_FLICKER_MULT: 4,
 
-  /* --- Canvas setup --- */
-  var canvas = document.createElement('canvas');
-  canvas.setAttribute('aria-hidden', 'true');
-  canvas.style.cssText = 'position:absolute;inset:0;pointer-events:none';
-  var ctx = canvas.getContext('2d');
-  wrap.appendChild(canvas);
+    init: function () {
+      var wrap = document.querySelector('.footer_canvas-wrap');
+      if (!wrap || wrap.querySelector('canvas')) return;
+      this._wrap = wrap;
 
-  var cols, rows, grid, textMask, spotMap;
-  var animId = null;
-  var lastTime = 0;
-  var isVisible = false;
-  var rm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var tc = window.ahTheme ? window.ahTheme.colors[window.ahTheme.current] : null;
+      this._colorR = tc ? tc.dotR : 242;
+      this._colorG = tc ? tc.dotG : 242;
+      this._colorB = tc ? tc.dotB : 242;
+      this._textColor = tc ? tc.text : '#fff';
 
-  /* Mouse state */
-  var mouseX = -9999, mouseY = -9999;
-  var isHovered = false;
-  var smoothX = -9999, smoothY = -9999;
+      /* Canvas setup */
+      this._canvas = document.createElement('canvas');
+      this._canvas.setAttribute('aria-hidden', 'true');
+      this._canvas.style.cssText = 'position:absolute;inset:0;pointer-events:none';
+      this._ctx = this._canvas.getContext('2d');
+      wrap.appendChild(this._canvas);
 
-  wrap.addEventListener('mouseenter', function () { isHovered = true; });
-  wrap.addEventListener('mouseleave', function () { isHovered = false; });
-  wrap.addEventListener('mousemove', function (e) {
-    var rect = wrap.getBoundingClientRect();
-    mouseX = e.clientX - rect.left;
-    mouseY = e.clientY - rect.top;
-  });
+      /* Mouse listeners */
+      var self = this;
+      var enterFn = function () { self._isHovered = true; };
+      var leaveFn = function () { self._isHovered = false; };
+      var moveFn = function (e) {
+        var rect = wrap.getBoundingClientRect();
+        self._mouseX = e.clientX - rect.left;
+        self._mouseY = e.clientY - rect.top;
+      };
+      wrap.addEventListener('mouseenter', enterFn);
+      wrap.addEventListener('mouseleave', leaveFn);
+      wrap.addEventListener('mousemove', moveFn);
+      this._mouseHandlers = [
+        { ev: 'mouseenter', fn: enterFn },
+        { ev: 'mouseleave', fn: leaveFn },
+        { ev: 'mousemove', fn: moveFn }
+      ];
 
-  function resize() {
-    var w = wrap.clientWidth;
-    var h = wrap.clientHeight;
-    var dpr = window.devicePixelRatio || 1;
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
-    canvas.style.width = w + 'px';
-    canvas.style.height = h + 'px';
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      /* Load Space Grotesk 700 for canvas rendering */
+      var fontLink = document.querySelector('link[href*="Space+Grotesk"]');
+      if (!fontLink) {
+        fontLink = document.createElement('link');
+        fontLink.rel = 'stylesheet';
+        fontLink.href = 'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&display=swap';
+        document.head.appendChild(fontLink);
+        this._fontLink = fontLink;
+      }
 
-    cols = Math.ceil(w / STEP);
-    rows = Math.ceil(h / STEP);
+      var rm = matchMedia('(prefers-reduced-motion:reduce)').matches;
 
-    /* Initialise opacity grid */
-    grid = new Float32Array(cols * rows);
-    for (var i = 0; i < grid.length; i++) {
-      grid[i] = Math.random() * BASE_ALPHA;
-    }
+      document.fonts.load(this.FONT_WEIGHT + ' 224px ' + this.FONT_FAMILY).then(function () {
+        self._resize();
 
-    spotMap = new Float32Array(cols * rows);
-
-    buildTextMask(w, h);
-    draw();
-  }
-
-  function buildTextMask(w, h) {
-    textMask = new Uint8Array(cols * rows);
-
-    /* Offscreen canvas to render text */
-    var off = document.createElement('canvas');
-    off.width = w;
-    off.height = h;
-    var oc = off.getContext('2d');
-
-    oc.fillStyle = '#000';
-    oc.fillRect(0, 0, w, h);
-    oc.font = FONT;
-    oc.letterSpacing = LETTER_SPACING;
-    oc.fillStyle = '#fff'; /* always white — mask detection only, not display colour */
-    oc.textAlign = 'left';
-    oc.textBaseline = 'middle';
-
-    /* Multiline text: split on \n, draw each line */
-    var lines = TEXT.split('\n');
-    var fontSize = 224;
-    var lineHeight = fontSize * LINE_HEIGHT;
-    var totalHeight = lines.length * lineHeight;
-    var xPos = TEXT_X_PAD;
-    var yCenter = h * TEXT_Y_PCT;
-    var startY = yCenter - totalHeight / 2 + lineHeight / 2;
-
-    for (var l = 0; l < lines.length; l++) {
-      oc.fillText(lines[l], xPos, startY + l * lineHeight);
-    }
-
-    var imgData = oc.getImageData(0, 0, w, h).data;
-
-    /* Sample pixel at centre of each grid cell */
-    for (var r = 0; r < rows; r++) {
-      for (var c = 0; c < cols; c++) {
-        var px = Math.floor(c * STEP + SQ / 2);
-        var py = Math.floor(r * STEP + SQ / 2);
-        if (px < w && py < h) {
-          var idx = (py * w + px) * 4;
-          textMask[r * cols + c] = imgData[idx] > 128 ? 1 : 0;
+        if (rm) {
+          self._draw();
+          return;
         }
-      }
-    }
 
-    /* Boost opacity for text-masked squares */
-    for (var i = 0; i < grid.length; i++) {
-      if (textMask[i]) {
-        grid[i] = Math.random() * (BASE_ALPHA * MASK_BOOST) + MASK_FLOOR;
-      }
-    }
-  }
+        /* IntersectionObserver: pause when off-screen */
+        self._io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) { self._start(); }
+            else { self._stop(); }
+          });
+        }, { threshold: 0 });
+        self._io.observe(wrap);
 
-  function draw() {
-    var w = wrap.clientWidth;
-    var h = wrap.clientHeight;
-    ctx.clearRect(0, 0, w, h);
+        /* ResizeObserver */
+        self._ro = new ResizeObserver(function () {
+          self._stop();
+          self._resize();
+          if (self._isVisible) self._start();
+        });
+        self._ro.observe(wrap);
 
-    for (var r = 0; r < rows; r++) {
-      for (var c = 0; c < cols; c++) {
-        var i = r * cols + c;
-        var alpha = grid[i];
-        if (alpha < 0.01) continue;
-        ctx.fillStyle = 'rgba(' + COLOR_R + ',' + COLOR_G + ',' + COLOR_B + ',' + alpha.toFixed(3) + ')';
-        ctx.fillRect(c * STEP, r * STEP, SQ, SQ);
-      }
-    }
-  }
-
-  function updateSpotMap() {
-    var active = smoothX > -999;
-    for (var r = 0; r < rows; r++) {
-      for (var c = 0; c < cols; c++) {
-        var i = r * cols + c;
-        if (!active) { spotMap[i] = 0; continue; }
-        var px = c * STEP + SQ / 2;
-        var py = r * STEP + SQ / 2;
-        var dx = px - smoothX;
-        var dy = py - smoothY;
-        var dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist >= HOVER_RADIUS) { spotMap[i] = 0; continue; }
-        spotMap[i] = 1 - Math.pow(dist / HOVER_RADIUS, HOVER_FALLOFF);
-      }
-    }
-  }
-
-  function animate(timestamp) {
-    if (!isVisible) return;
-
-    /* Time-based flicker — frame-rate independent */
-    if (!lastTime) lastTime = timestamp;
-    var deltaTime = (timestamp - lastTime) / 1000;
-    lastTime = timestamp;
-    if (deltaTime > 0.1) deltaTime = 0.1;
-
-    /* Lerp smoothed mouse towards actual mouse */
-    if (isHovered) {
-      if (smoothX < -999) { smoothX = mouseX; smoothY = mouseY; }
-      smoothX += (mouseX - smoothX) * LERP_SPEED;
-      smoothY += (mouseY - smoothY) * LERP_SPEED;
-    } else {
-      smoothX += (-9999 - smoothX) * 0.02;
-      smoothY += (-9999 - smoothY) * 0.02;
-    }
-
-    /* Update spotlight intensity map */
-    updateSpotMap();
-
-    /* Flicker: spotlight boosts ceiling + rate, stacking with text mask */
-    for (var i = 0; i < grid.length; i++) {
-      var t = spotMap[i];
-      var flickerRate = FLICKER + (FLICKER * (HOVER_FLICKER_MULT - 1)) * t;
-
-      if (Math.random() < flickerRate * deltaTime) {
-        if (textMask && textMask[i]) {
-          /* Text-masked: higher base + spotlight boost on top */
-          var maskCeiling = BASE_ALPHA * MASK_BOOST + (HOVER_ALPHA - BASE_ALPHA) * t;
-          grid[i] = Math.random() * maskCeiling + MASK_FLOOR;
-        } else {
-          /* Background: same as hero spotlight */
-          var alphaCeiling = BASE_ALPHA + (HOVER_ALPHA - BASE_ALPHA) * t;
-          grid[i] = Math.random() * alphaCeiling;
-        }
-      }
-    }
-
-    draw();
-    animId = requestAnimationFrame(animate);
-  }
-
-  function start() {
-    if (animId) return;
-    isVisible = true;
-    lastTime = 0;
-    requestAnimationFrame(animate);
-  }
-
-  function stop() {
-    isVisible = false;
-    if (animId) {
-      cancelAnimationFrame(animId);
-      animId = null;
-    }
-  }
-
-  /* Load Space Grotesk 700 for canvas rendering.
-     Must use document.fonts.load() — not document.fonts.ready —
-     because canvas-only fonts aren't triggered by DOM references (DEC-026). */
-  var fontLink = document.querySelector('link[href*="Space+Grotesk"]');
-  if (!fontLink) {
-    fontLink = document.createElement('link');
-    fontLink.rel = 'stylesheet';
-    fontLink.href = 'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&display=swap';
-    document.head.appendChild(fontLink);
-  }
-
-  document.fonts.load(FONT).then(function () {
-    resize();
-
-    if (rm) {
-      /* Reduced motion: static grid, no animation */
-      draw();
-      return;
-    }
-
-    /* IntersectionObserver: pause when off-screen */
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (entry.isIntersecting) {
-          start();
-        } else {
-          stop();
-        }
+        /* Theme change */
+        self._themeHandler = function () {
+          var c = window.ahTheme.colors[window.ahTheme.current];
+          self._colorR = c.dotR; self._colorG = c.dotG; self._colorB = c.dotB;
+          self._textColor = c.text;
+          self._resize();
+        };
+        document.documentElement.addEventListener('themechange', self._themeHandler);
       });
-    }, { threshold: 0 });
-    io.observe(wrap);
+    },
 
-    /* ResizeObserver: re-draw on viewport resize */
-    var ro = new ResizeObserver(function () {
-      stop();
-      resize();
-      if (isVisible) start();
-    });
-    ro.observe(wrap);
+    destroy: function () {
+      this._stop();
 
-    /* Theme change: update dot + text colours, rebuild mask */
-    document.documentElement.addEventListener('themechange', function () {
-      var c = window.ahTheme.colors[window.ahTheme.current];
-      COLOR_R = c.dotR; COLOR_G = c.dotG; COLOR_B = c.dotB;
-      TEXT_COLOR = c.text;
-      resize(); /* rebuilds text mask with new TEXT_COLOR */
-    });
-  });
+      if (this._io) { this._io.disconnect(); this._io = null; }
+      if (this._ro) { this._ro.disconnect(); this._ro = null; }
+
+      if (this._themeHandler) {
+        document.documentElement.removeEventListener('themechange', this._themeHandler);
+        this._themeHandler = null;
+      }
+
+      var wrap = this._wrap;
+      if (wrap) {
+        this._mouseHandlers.forEach(function (h) {
+          wrap.removeEventListener(h.ev, h.fn);
+        });
+      }
+      this._mouseHandlers = [];
+
+      if (this._canvas && this._canvas.parentNode) {
+        this._canvas.parentNode.removeChild(this._canvas);
+      }
+      this._canvas = null;
+      this._ctx = null;
+      this._wrap = null;
+      this._grid = null;
+      this._textMask = null;
+      this._spotMap = null;
+      this._mouseX = -9999;
+      this._mouseY = -9999;
+      this._smoothX = -9999;
+      this._smoothY = -9999;
+      this._isHovered = false;
+    },
+
+    _resize: function () {
+      var wrap = this._wrap;
+      if (!wrap || !this._canvas) return;
+      var STEP = this.SQ + this.GAP;
+      var w = wrap.clientWidth;
+      var h = wrap.clientHeight;
+      var dpr = window.devicePixelRatio || 1;
+      this._canvas.width = w * dpr;
+      this._canvas.height = h * dpr;
+      this._canvas.style.width = w + 'px';
+      this._canvas.style.height = h + 'px';
+      this._ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      this._cols = Math.ceil(w / STEP);
+      this._rows = Math.ceil(h / STEP);
+
+      this._grid = new Float32Array(this._cols * this._rows);
+      for (var i = 0; i < this._grid.length; i++) {
+        this._grid[i] = Math.random() * this.BASE_ALPHA;
+      }
+      this._spotMap = new Float32Array(this._cols * this._rows);
+
+      this._buildTextMask(w, h);
+      this._draw();
+    },
+
+    _buildTextMask: function (w, h) {
+      var STEP = this.SQ + this.GAP;
+      this._textMask = new Uint8Array(this._cols * this._rows);
+
+      var off = document.createElement('canvas');
+      off.width = w;
+      off.height = h;
+      var oc = off.getContext('2d');
+
+      oc.fillStyle = '#000';
+      oc.fillRect(0, 0, w, h);
+      var fontSize = Math.min(224, Math.max(64, Math.round(w * 0.25)));
+      var font = this.FONT_WEIGHT + ' ' + fontSize + 'px ' + this.FONT_FAMILY;
+      oc.font = font;
+      oc.letterSpacing = this.LETTER_SPACING;
+      oc.fillStyle = '#fff';
+      oc.textAlign = 'left';
+      oc.textBaseline = 'middle';
+
+      var lines = this.TEXT.split('\n');
+      var lineHeight = fontSize * this.LINE_HEIGHT;
+      var totalHeight = lines.length * lineHeight;
+      var xPos = w < 768 ? 8 : this.TEXT_X_PAD;
+      var yCenter = h * (w < 768 ? 0.82 : this.TEXT_Y_PCT);
+      var startY = yCenter - totalHeight / 2 + lineHeight / 2;
+
+      for (var l = 0; l < lines.length; l++) {
+        oc.fillText(lines[l], xPos, startY + l * lineHeight);
+      }
+
+      var imgData = oc.getImageData(0, 0, w, h).data;
+
+      for (var r = 0; r < this._rows; r++) {
+        for (var c = 0; c < this._cols; c++) {
+          var px = Math.floor(c * STEP + this.SQ / 2);
+          var py = Math.floor(r * STEP + this.SQ / 2);
+          if (px < w && py < h) {
+            var idx = (py * w + px) * 4;
+            this._textMask[r * this._cols + c] = imgData[idx] > 128 ? 1 : 0;
+          }
+        }
+      }
+
+      for (var i = 0; i < this._grid.length; i++) {
+        if (this._textMask[i]) {
+          this._grid[i] = Math.random() * (this.BASE_ALPHA * this.MASK_BOOST) + this.MASK_FLOOR;
+        }
+      }
+    },
+
+    _draw: function () {
+      var wrap = this._wrap;
+      if (!wrap || !this._ctx) return;
+      var STEP = this.SQ + this.GAP;
+      var w = wrap.clientWidth;
+      var h = wrap.clientHeight;
+      this._ctx.clearRect(0, 0, w, h);
+
+      for (var r = 0; r < this._rows; r++) {
+        for (var c = 0; c < this._cols; c++) {
+          var i = r * this._cols + c;
+          var alpha = this._grid[i];
+          if (alpha < 0.01) continue;
+          this._ctx.fillStyle = 'rgba(' + this._colorR + ',' + this._colorG + ',' + this._colorB + ',' + alpha.toFixed(3) + ')';
+          this._ctx.fillRect(c * STEP, r * STEP, this.SQ, this.SQ);
+        }
+      }
+    },
+
+    _updateSpotMap: function () {
+      var STEP = this.SQ + this.GAP;
+      var active = this._smoothX > -999;
+      for (var r = 0; r < this._rows; r++) {
+        for (var c = 0; c < this._cols; c++) {
+          var i = r * this._cols + c;
+          if (!active) { this._spotMap[i] = 0; continue; }
+          var px = c * STEP + this.SQ / 2;
+          var py = r * STEP + this.SQ / 2;
+          var dx = px - this._smoothX;
+          var dy = py - this._smoothY;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist >= this.HOVER_RADIUS) { this._spotMap[i] = 0; continue; }
+          this._spotMap[i] = 1 - Math.pow(dist / this.HOVER_RADIUS, this.HOVER_FALLOFF);
+        }
+      }
+    },
+
+    _animate: function (timestamp) {
+      if (!this._isVisible) return;
+      var self = this;
+
+      if (!this._lastTime) this._lastTime = timestamp;
+      var deltaTime = (timestamp - this._lastTime) / 1000;
+      this._lastTime = timestamp;
+      if (deltaTime > 0.1) deltaTime = 0.1;
+
+      if (this._isHovered) {
+        if (this._smoothX < -999) { this._smoothX = this._mouseX; this._smoothY = this._mouseY; }
+        this._smoothX += (this._mouseX - this._smoothX) * this.LERP_SPEED;
+        this._smoothY += (this._mouseY - this._smoothY) * this.LERP_SPEED;
+      } else {
+        this._smoothX += (-9999 - this._smoothX) * 0.02;
+        this._smoothY += (-9999 - this._smoothY) * 0.02;
+      }
+
+      this._updateSpotMap();
+
+      for (var i = 0; i < this._grid.length; i++) {
+        var t = this._spotMap[i];
+        var flickerRate = this.FLICKER + (this.FLICKER * (this.HOVER_FLICKER_MULT - 1)) * t;
+
+        if (Math.random() < flickerRate * deltaTime) {
+          if (this._textMask && this._textMask[i]) {
+            var maskCeiling = this.BASE_ALPHA * this.MASK_BOOST + (this.HOVER_ALPHA - this.BASE_ALPHA) * t;
+            this._grid[i] = Math.random() * maskCeiling + this.MASK_FLOOR;
+          } else {
+            var alphaCeiling = this.BASE_ALPHA + (this.HOVER_ALPHA - this.BASE_ALPHA) * t;
+            this._grid[i] = Math.random() * alphaCeiling;
+          }
+        }
+      }
+
+      this._draw();
+      this._animId = requestAnimationFrame(function (ts) { self._animate(ts); });
+    },
+
+    _start: function () {
+      if (this._animId) return;
+      this._isVisible = true;
+      this._lastTime = 0;
+      var self = this;
+      requestAnimationFrame(function (ts) { self._animate(ts); });
+    },
+
+    _stop: function () {
+      this._isVisible = false;
+      if (this._animId) {
+        cancelAnimationFrame(this._animId);
+        this._animId = null;
+      }
+    }
+  };
+
+  /* Boot on load */
+  ah.footerCanvas.init();
 
 })();

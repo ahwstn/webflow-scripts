@@ -1,7 +1,7 @@
 /**
  * ah-hero.js — Ambient Dot-Grid Hero Background + Hover Spotlight
- * @version 2.1.0
- * @cdn https://cdn.jsdelivr.net/gh/ahwstn/webflow-scripts@main/ahwstn/ah-hero.min.js
+ * @version 3.0.0
+ * @cdn https://cdn.ahwstn.com/ahwstn/ah-hero.min.js
  *
  * Flickering dot-grid canvas behind hero text. Cursor-following spotlight
  * raises the flicker ceiling and rate in a wide radius around the mouse,
@@ -10,203 +10,269 @@
  * Static-first: hero content is fully readable without JS. Canvas is
  * purely decorative (aria-hidden).
  *
- * v1.0.0: Initial build — radial vignette, IO pause, RO resize, reduced-motion.
- * v2.0.0: Hover spotlight — lerped cursor tracking, boosted flicker ceiling + rate.
+ * v3.0.0: Module pattern — ah.heroCanvas with init/destroy for Barba lifecycle.
+ *         DOM-gated: exits silently if .section_home-hero is absent.
  * v2.1.0: Theme-aware — reads dot colour from window.ahTheme, listens for themechange.
+ * v2.0.0: Hover spotlight — lerped cursor tracking, boosted flicker ceiling + rate.
+ * v1.0.0: Initial build — radial vignette, IO pause, RO resize, reduced-motion.
  */
 (function () {
   'use strict';
 
-  var hero = document.querySelector('.section_home-hero');
-  if (!hero || hero.querySelector('canvas')) return;
+  window.ah = window.ah || {};
 
-  /* --- Configuration --- */
-  var SQ = 3;            /* square size px */
-  var GAP = 5;           /* gap between squares px */
-  var STEP = SQ + GAP;
-  var FLICKER = 0.3;     /* base flicker rate (multiplied by deltaTime) */
-  var BASE_ALPHA = 0.1;
-  var tc = window.ahTheme ? window.ahTheme.colors[window.ahTheme.current] : null;
-  var COLOR_R = tc ? tc.dotR : 242;
-  var COLOR_G = tc ? tc.dotG : 242;
-  var COLOR_B = tc ? tc.dotB : 242;
+  ah.heroCanvas = {
+    _canvas: null,
+    _ctx: null,
+    _hero: null,
+    _cols: 0,
+    _rows: 0,
+    _grid: null,
+    _spotMap: null,
+    _animId: null,
+    _lastTime: 0,
+    _isVisible: false,
+    _io: null,
+    _ro: null,
+    _themeHandler: null,
+    _mouseHandlers: [],
+    _mouseX: -9999,
+    _mouseY: -9999,
+    _isHovered: false,
+    _smoothX: -9999,
+    _smoothY: -9999,
+    _colorR: 242,
+    _colorG: 242,
+    _colorB: 242,
 
-  /* Hover spotlight */
-  var HOVER_RADIUS = 500;     /* px — spotlight radius */
-  var HOVER_ALPHA = 0.25;     /* peak alpha at cursor centre */
-  var HOVER_FALLOFF = 3;      /* spotlight edge curve (higher = tighter) */
-  var LERP_SPEED = 0.05;      /* cursor tracking smoothness (lower = more lag) */
-  var HOVER_FLICKER_MULT = 4; /* flicker rate multiplier inside spotlight */
+    /* Constants */
+    SQ: 3,
+    GAP: 5,
+    FLICKER: 0.3,
+    BASE_ALPHA: 0.1,
+    HOVER_RADIUS: 500,
+    HOVER_ALPHA: 0.25,
+    HOVER_FALLOFF: 3,
+    LERP_SPEED: 0.05,
+    HOVER_FLICKER_MULT: 4,
 
-  /* --- Canvas setup --- */
-  var canvas = document.createElement('canvas');
-  canvas.setAttribute('aria-hidden', 'true');
-  canvas.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:0';
-  var ctx = canvas.getContext('2d');
+    init: function () {
+      var hero = document.querySelector('.section_home-hero');
+      if (!hero || hero.querySelector('canvas')) return;
+      this._hero = hero;
 
-  /* Insert canvas as first child so hero content sits on top */
-  hero.style.position = 'relative';
-  hero.insertBefore(canvas, hero.firstChild);
+      var rm = matchMedia('(prefers-reduced-motion:reduce)').matches;
+      var tc = window.ahTheme ? window.ahTheme.colors[window.ahTheme.current] : null;
+      this._colorR = tc ? tc.dotR : 242;
+      this._colorG = tc ? tc.dotG : 242;
+      this._colorB = tc ? tc.dotB : 242;
 
-  var cols, rows, grid, spotMap;
-  var animId = null;
-  var lastTime = 0;
-  var isVisible = false;
-  var rm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      /* Canvas setup */
+      this._canvas = document.createElement('canvas');
+      this._canvas.setAttribute('aria-hidden', 'true');
+      this._canvas.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:0';
+      this._ctx = this._canvas.getContext('2d');
 
-  /* Mouse state */
-  var mouseX = -9999, mouseY = -9999;
-  var isHovered = false;
-  var smoothX = -9999, smoothY = -9999;
+      hero.style.position = 'relative';
+      hero.insertBefore(this._canvas, hero.firstChild);
 
-  hero.addEventListener('mouseenter', function () { isHovered = true; });
-  hero.addEventListener('mouseleave', function () { isHovered = false; });
-  hero.addEventListener('mousemove', function (e) {
-    var rect = hero.getBoundingClientRect();
-    mouseX = e.clientX - rect.left;
-    mouseY = e.clientY - rect.top;
-  });
+      /* Mouse listeners */
+      var self = this;
+      var enterFn = function () { self._isHovered = true; };
+      var leaveFn = function () { self._isHovered = false; };
+      var moveFn = function (e) {
+        var rect = hero.getBoundingClientRect();
+        self._mouseX = e.clientX - rect.left;
+        self._mouseY = e.clientY - rect.top;
+      };
+      hero.addEventListener('mouseenter', enterFn);
+      hero.addEventListener('mouseleave', leaveFn);
+      hero.addEventListener('mousemove', moveFn);
+      this._mouseHandlers = [
+        { ev: 'mouseenter', fn: enterFn },
+        { ev: 'mouseleave', fn: leaveFn },
+        { ev: 'mousemove', fn: moveFn }
+      ];
 
-  function resize() {
-    var w = hero.clientWidth;
-    var h = hero.clientHeight;
-    var dpr = window.devicePixelRatio || 1;
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
-    canvas.style.width = w + 'px';
-    canvas.style.height = h + 'px';
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      this._resize();
 
-    cols = Math.ceil(w / STEP);
-    rows = Math.ceil(h / STEP);
-
-    /* Initialise opacity grid */
-    grid = new Float32Array(cols * rows);
-    for (var i = 0; i < grid.length; i++) {
-      grid[i] = Math.random() * BASE_ALPHA;
-    }
-
-    spotMap = new Float32Array(cols * rows);
-
-    draw();
-  }
-
-  function draw() {
-    var w = hero.clientWidth;
-    var h = hero.clientHeight;
-    ctx.clearRect(0, 0, w, h);
-
-    for (var r = 0; r < rows; r++) {
-      for (var c = 0; c < cols; c++) {
-        var i = r * cols + c;
-        var alpha = grid[i];
-        if (alpha < 0.005) continue;
-        ctx.fillStyle = 'rgba(' + COLOR_R + ',' + COLOR_G + ',' + COLOR_B + ',' + alpha.toFixed(3) + ')';
-        ctx.fillRect(c * STEP, r * STEP, SQ, SQ);
+      if (rm) {
+        this._draw();
+        return;
       }
-    }
-  }
 
-  function updateSpotMap() {
-    var active = smoothX > -999;
-    for (var r = 0; r < rows; r++) {
-      for (var c = 0; c < cols; c++) {
-        var i = r * cols + c;
-        if (!active) { spotMap[i] = 0; continue; }
-        var px = c * STEP + SQ / 2;
-        var py = r * STEP + SQ / 2;
-        var dx = px - smoothX;
-        var dy = py - smoothY;
-        var dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist >= HOVER_RADIUS) { spotMap[i] = 0; continue; }
-        spotMap[i] = 1 - Math.pow(dist / HOVER_RADIUS, HOVER_FALLOFF);
+      /* IntersectionObserver: pause when off-screen */
+      this._io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) { self._start(); }
+          else { self._stop(); }
+        });
+      }, { threshold: 0 });
+      this._io.observe(hero);
+
+      /* ResizeObserver */
+      this._ro = new ResizeObserver(function () {
+        self._stop();
+        self._resize();
+        if (self._isVisible) self._start();
+      });
+      this._ro.observe(hero);
+
+      /* Theme change */
+      this._themeHandler = function () {
+        var c = window.ahTheme.colors[window.ahTheme.current];
+        self._colorR = c.dotR; self._colorG = c.dotG; self._colorB = c.dotB;
+        self._draw();
+      };
+      document.documentElement.addEventListener('themechange', this._themeHandler);
+    },
+
+    destroy: function () {
+      this._stop();
+
+      if (this._io) { this._io.disconnect(); this._io = null; }
+      if (this._ro) { this._ro.disconnect(); this._ro = null; }
+
+      if (this._themeHandler) {
+        document.documentElement.removeEventListener('themechange', this._themeHandler);
+        this._themeHandler = null;
       }
-    }
-  }
 
-  function animate(timestamp) {
-    if (!isVisible) return;
-
-    if (!lastTime) lastTime = timestamp;
-    var deltaTime = (timestamp - lastTime) / 1000;
-    lastTime = timestamp;
-    if (deltaTime > 0.1) deltaTime = 0.1;
-
-    /* Lerp smoothed mouse towards actual mouse */
-    if (isHovered) {
-      if (smoothX < -999) { smoothX = mouseX; smoothY = mouseY; }
-      smoothX += (mouseX - smoothX) * LERP_SPEED;
-      smoothY += (mouseY - smoothY) * LERP_SPEED;
-    } else {
-      /* Fade out: drift smooth position off-screen gradually */
-      smoothX += (-9999 - smoothX) * 0.02;
-      smoothY += (-9999 - smoothY) * 0.02;
-    }
-
-    /* Update spotlight intensity map */
-    updateSpotMap();
-
-    /* Flicker: dots inside spotlight get boosted ceiling + faster rate */
-    for (var i = 0; i < grid.length; i++) {
-      var t = spotMap[i];
-      var flickerRate = FLICKER + (FLICKER * (HOVER_FLICKER_MULT - 1)) * t;
-      var alphaCeiling = BASE_ALPHA + (HOVER_ALPHA - BASE_ALPHA) * t;
-
-      if (Math.random() < flickerRate * deltaTime) {
-        grid[i] = Math.random() * alphaCeiling;
+      var hero = this._hero;
+      if (hero) {
+        this._mouseHandlers.forEach(function (h) {
+          hero.removeEventListener(h.ev, h.fn);
+        });
       }
-    }
+      this._mouseHandlers = [];
 
-    draw();
-    animId = requestAnimationFrame(animate);
-  }
+      if (this._canvas && this._canvas.parentNode) {
+        this._canvas.parentNode.removeChild(this._canvas);
+      }
+      this._canvas = null;
+      this._ctx = null;
+      this._hero = null;
+      this._grid = null;
+      this._spotMap = null;
+      this._mouseX = -9999;
+      this._mouseY = -9999;
+      this._smoothX = -9999;
+      this._smoothY = -9999;
+      this._isHovered = false;
+    },
 
-  function start() {
-    if (animId) return;
-    isVisible = true;
-    lastTime = 0;
-    requestAnimationFrame(animate);
-  }
+    _resize: function () {
+      var hero = this._hero;
+      if (!hero || !this._canvas) return;
+      var STEP = this.SQ + this.GAP;
+      var w = hero.clientWidth;
+      var h = hero.clientHeight;
+      var dpr = window.devicePixelRatio || 1;
+      this._canvas.width = w * dpr;
+      this._canvas.height = h * dpr;
+      this._canvas.style.width = w + 'px';
+      this._canvas.style.height = h + 'px';
+      this._ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  function stop() {
-    isVisible = false;
-    if (animId) {
-      cancelAnimationFrame(animId);
-      animId = null;
-    }
-  }
+      this._cols = Math.ceil(w / STEP);
+      this._rows = Math.ceil(h / STEP);
 
-  /* --- Init --- */
-  resize();
+      this._grid = new Float32Array(this._cols * this._rows);
+      for (var i = 0; i < this._grid.length; i++) {
+        this._grid[i] = Math.random() * this.BASE_ALPHA;
+      }
+      this._spotMap = new Float32Array(this._cols * this._rows);
+      this._draw();
+    },
 
-  if (rm) {
-    draw();
-    return;
-  }
+    _draw: function () {
+      var hero = this._hero;
+      if (!hero || !this._ctx) return;
+      var STEP = this.SQ + this.GAP;
+      var w = hero.clientWidth;
+      var h = hero.clientHeight;
+      this._ctx.clearRect(0, 0, w, h);
 
-  var io = new IntersectionObserver(function (entries) {
-    entries.forEach(function (entry) {
-      if (entry.isIntersecting) {
-        start();
+      for (var r = 0; r < this._rows; r++) {
+        for (var c = 0; c < this._cols; c++) {
+          var i = r * this._cols + c;
+          var alpha = this._grid[i];
+          if (alpha < 0.005) continue;
+          this._ctx.fillStyle = 'rgba(' + this._colorR + ',' + this._colorG + ',' + this._colorB + ',' + alpha.toFixed(3) + ')';
+          this._ctx.fillRect(c * STEP, r * STEP, this.SQ, this.SQ);
+        }
+      }
+    },
+
+    _updateSpotMap: function () {
+      var STEP = this.SQ + this.GAP;
+      var active = this._smoothX > -999;
+      for (var r = 0; r < this._rows; r++) {
+        for (var c = 0; c < this._cols; c++) {
+          var i = r * this._cols + c;
+          if (!active) { this._spotMap[i] = 0; continue; }
+          var px = c * STEP + this.SQ / 2;
+          var py = r * STEP + this.SQ / 2;
+          var dx = px - this._smoothX;
+          var dy = py - this._smoothY;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist >= this.HOVER_RADIUS) { this._spotMap[i] = 0; continue; }
+          this._spotMap[i] = 1 - Math.pow(dist / this.HOVER_RADIUS, this.HOVER_FALLOFF);
+        }
+      }
+    },
+
+    _animate: function (timestamp) {
+      if (!this._isVisible) return;
+      var self = this;
+
+      if (!this._lastTime) this._lastTime = timestamp;
+      var deltaTime = (timestamp - this._lastTime) / 1000;
+      this._lastTime = timestamp;
+      if (deltaTime > 0.1) deltaTime = 0.1;
+
+      if (this._isHovered) {
+        if (this._smoothX < -999) { this._smoothX = this._mouseX; this._smoothY = this._mouseY; }
+        this._smoothX += (this._mouseX - this._smoothX) * this.LERP_SPEED;
+        this._smoothY += (this._mouseY - this._smoothY) * this.LERP_SPEED;
       } else {
-        stop();
+        this._smoothX += (-9999 - this._smoothX) * 0.02;
+        this._smoothY += (-9999 - this._smoothY) * 0.02;
       }
-    });
-  }, { threshold: 0 });
-  io.observe(hero);
 
-  var ro = new ResizeObserver(function () {
-    stop();
-    resize();
-    if (isVisible) start();
-  });
-  ro.observe(hero);
+      this._updateSpotMap();
 
-  /* Theme change: update dot colours */
-  document.documentElement.addEventListener('themechange', function () {
-    var c = window.ahTheme.colors[window.ahTheme.current];
-    COLOR_R = c.dotR; COLOR_G = c.dotG; COLOR_B = c.dotB;
-    draw();
-  });
+      for (var i = 0; i < this._grid.length; i++) {
+        var t = this._spotMap[i];
+        var flickerRate = this.FLICKER + (this.FLICKER * (this.HOVER_FLICKER_MULT - 1)) * t;
+        var alphaCeiling = this.BASE_ALPHA + (this.HOVER_ALPHA - this.BASE_ALPHA) * t;
+        if (Math.random() < flickerRate * deltaTime) {
+          this._grid[i] = Math.random() * alphaCeiling;
+        }
+      }
+
+      this._draw();
+      this._animId = requestAnimationFrame(function (ts) { self._animate(ts); });
+    },
+
+    _start: function () {
+      if (this._animId) return;
+      this._isVisible = true;
+      this._lastTime = 0;
+      var self = this;
+      requestAnimationFrame(function (ts) { self._animate(ts); });
+    },
+
+    _stop: function () {
+      this._isVisible = false;
+      if (this._animId) {
+        cancelAnimationFrame(this._animId);
+        this._animId = null;
+      }
+    }
+  };
+
+  /* Boot on load */
+  ah.heroCanvas.init();
 
 })();
