@@ -1,6 +1,6 @@
 /**
  * ahJs.js — Behavioural JS (Footer, defer)
- * @version 1.7.0
+ * @version 1.8.0
  * @cdn https://cdn.jsdelivr.net/gh/ahwstn/webflow-scripts@main/ahwstn/ahJs.min.js
  *
  * Vanilla JS + GSAP (loaded via Site Settings: ScrollTrigger, SplitText).
@@ -17,6 +17,7 @@
  * v1.5.1: Snappier scroll snap — 20ms delay, power2.out ease, tighter duration.
  * v1.6.0: Lenis smooth scroll init + GSAP ticker sync, nav overlay stop/start.
  * v1.7.0: Removed work scroll snap — fought with Lenis, CSS view-timeline is enough.
+ * v1.8.0: Theme toggle button handler, aria-label update, transition class.
  */
 (function () {
   'use strict';
@@ -238,6 +239,20 @@
         card.style.setProperty('--card-glow-x', '50%');
         card.style.setProperty('--card-glow-y', '50%');
       });
+    });
+  }
+
+  /* ===== Theme toggle ===== */
+  var themeToggle = document.querySelector('.nav_theme-toggle');
+  if (themeToggle && window.ahTheme) {
+    themeToggle.addEventListener('click', function () {
+      document.documentElement.setAttribute('data-theme-transitioning', '');
+      window.ahTheme.toggle();
+      themeToggle.setAttribute('aria-label',
+        'Switch to ' + (window.ahTheme.current === 'dark' ? 'light' : 'dark') + ' mode');
+      setTimeout(function () {
+        document.documentElement.removeAttribute('data-theme-transitioning');
+      }, 400);
     });
   }
 

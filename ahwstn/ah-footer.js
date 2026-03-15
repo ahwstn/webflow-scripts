@@ -1,6 +1,6 @@
 /**
  * ah-footer.js — Canvas CTA Footer + Hover Spotlight
- * @version 2.0.0
+ * @version 2.1.0
  * @cdn https://cdn.jsdelivr.net/gh/ahwstn/webflow-scripts@main/ahwstn/ah-footer.min.js
  *
  * Canvas-based flickering dot-grid with multiline text mask ("Let's\nconnect"
@@ -15,6 +15,7 @@
  *
  * v1.0.0: Initial build — standalone (no AMH.register dependency).
  * v2.0.0: Hover spotlight — lerped cursor tracking, boosted flicker ceiling + rate.
+ * v2.1.0: Theme-aware — reads dot/text colour from window.ahTheme, listens for themechange.
  */
 (function () {
   'use strict';
@@ -36,7 +37,11 @@
   var LINE_HEIGHT = 0.6;
   var TEXT_X_PAD = 38;   /* left padding to align with footer bar */
   var TEXT_Y_PCT = 0.78; /* vertical position as fraction */
-  var COLOR_R = 242, COLOR_G = 242, COLOR_B = 242; /* Off-White #F2F2F2 */
+  var tc = window.ahTheme ? window.ahTheme.colors[window.ahTheme.current] : null;
+  var COLOR_R = tc ? tc.dotR : 242;
+  var COLOR_G = tc ? tc.dotG : 242;
+  var COLOR_B = tc ? tc.dotB : 242;
+  var TEXT_COLOR = tc ? tc.text : '#fff';
 
   /* Hover spotlight */
   var HOVER_RADIUS = 500;     /* px — spotlight radius */
@@ -109,7 +114,7 @@
     oc.fillRect(0, 0, w, h);
     oc.font = FONT;
     oc.letterSpacing = LETTER_SPACING;
-    oc.fillStyle = '#fff';
+    oc.fillStyle = TEXT_COLOR;
     oc.textAlign = 'left';
     oc.textBaseline = 'middle';
 
@@ -279,6 +284,14 @@
       if (isVisible) start();
     });
     ro.observe(wrap);
+
+    /* Theme change: update dot + text colours, rebuild mask */
+    document.documentElement.addEventListener('themechange', function () {
+      var c = window.ahTheme.colors[window.ahTheme.current];
+      COLOR_R = c.dotR; COLOR_G = c.dotG; COLOR_B = c.dotB;
+      TEXT_COLOR = c.text;
+      resize(); /* rebuilds text mask with new TEXT_COLOR */
+    });
   });
 
 })();

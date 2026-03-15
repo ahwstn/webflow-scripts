@@ -1,6 +1,6 @@
 /**
  * ahCss.js — CSS Injection (Header)
- * @version 1.7.1
+ * @version 1.8.0
  * @cdn https://cdn.jsdelivr.net/gh/ahwstn/webflow-scripts@main/ahwstn/ahCss.min.js
  *
  * JS-injected <style> for things the Webflow Designer genuinely cannot do:
@@ -31,7 +31,9 @@
  * v1.6.0: Work horizontal scroll — CSS view-timeline, sticky viewport,
  *         Firefox scroll-snap fallback, reduced motion. Replaces stacking cards.
  * v1.7.0: Lenis smooth scroll CSS rules, removed native scroll-behavior:smooth.
- * v1.7.1: Scroll progress indicator — ::after on nav_wrapper, mix-blend-mode:difference.
+ * v1.7.1: Scroll progress indicator — ::after on nav_wrapper, rgba white wash.
+ * v1.8.0: Light/dark theme support — CSS custom properties for all theme-sensitive
+ *         values, [data-theme="light"] overrides, toggle button styles.
  */
 (function () {
   'use strict';
@@ -44,8 +46,46 @@
   +   '--expo-out:cubic-bezier(.22,1,.36,1);'
   +   '--spring-smooth:linear(0,0.002,0.008,0.018,0.032,0.05,0.071,0.096,0.124,0.154,0.187,0.222,0.259,0.297,0.337,0.378,0.42,0.462,0.504,0.546,0.587,0.628,0.667,0.705,0.741,0.775,0.808,0.838,0.866,0.891,0.914,0.934,0.952,0.967,0.98,0.99,0.998,1.003,1.006,1.007,1.006,1.004,1.001,0.998,0.996,0.995,0.994,0.994,0.995,0.997,0.998,1);'
   +   '--spring-active:linear(0,0.004,0.016,0.035,0.063,0.098,0.141,0.19,0.245,0.305,0.37,0.438,0.509,0.581,0.654,0.726,0.796,0.863,0.926,0.985,1.038,1.085,1.126,1.159,1.185,1.204,1.216,1.221,1.22,1.213,1.201,1.185,1.166,1.145,1.122,1.099,1.076,1.054,1.033,1.014,0.998,0.984,0.974,0.966,0.961,0.959,0.96,0.963,0.967,0.973,0.979,0.986,0.993,0.999,1.004,1.008,1.01,1.011,1.01,1.008,1.006,1.003,1);'
-  +   '--nav-height:4.0625rem'
+  +   '--nav-height:4.0625rem;'
+  +   '--ah-accent:#E85D04;'
+  +   '--ah-accent-hover:#F07020;'
+  +   '--ah-accent-glow:rgba(232,93,4,.15);'
+  +   '--ah-accent-rgb:232,93,4;'
+  +   '--ah-text-fill:#F2F2F2;'
+  +   '--ah-dot-grid:rgba(255,255,255,.05);'
+  +   '--ah-dot-grid-hover:rgba(255,255,255,.07);'
+  +   '--ah-nav-wash:rgba(255,255,255,.05);'
+  +   '--ah-nav-line:#F2F2F2;'
+  +   '--ah-cursor-color:#F2F2F2'
   + '}'
+  /* === Light theme overrides === */
+  + '[data-theme="light"]{'
+  +   '--ah-accent:#D35400;'
+  +   '--ah-accent-hover:#E85D04;'
+  +   '--ah-accent-glow:rgba(211,84,0,.12);'
+  +   '--ah-accent-rgb:211,84,0;'
+  +   '--ah-text-fill:#1A1A1A;'
+  +   '--ah-dot-grid:rgba(0,0,0,.06);'
+  +   '--ah-dot-grid-hover:rgba(0,0,0,.08);'
+  +   '--ah-nav-wash:rgba(0,0,0,.04);'
+  +   '--ah-nav-line:#1A1A1A;'
+  +   '--ah-cursor-color:#1A1A1A'
+  + '}'
+  + '[data-theme="light"] .home-services_card.is-shopify{--card-accent:211,84,0}'
+  + '[data-theme="light"] .home-services_card.is-webflow{--card-accent:124,58,237}'
+  /* === Toggle transition (added/removed by JS, not on page load) === */
+  + '[data-theme-transitioning] *{'
+  +   'transition:background-color .3s ease,color .3s ease,border-color .3s ease!important'
+  + '}'
+  /* === Theme toggle button === */
+  + '.nav_theme-toggle{'
+  +   'background:none;border:none;padding:.5rem;'
+  +   'color:var(--ah-text-fill);opacity:.5;'
+  +   'transition:opacity .3s var(--expo-out)'
+  + '}'
+  + '.nav_theme-toggle:hover{opacity:1}'
+  + '[data-theme="dark"] .nav_theme-icon.is-moon{display:none}'
+  + '[data-theme="light"] .nav_theme-icon.is-sun{display:none}'
   /* Fallback for browsers without linear() support */
   + '@supports not (transition-timing-function:linear(0,1)){'
   +   ':root{--spring-smooth:cubic-bezier(.4,0,.2,1);--spring-active:cubic-bezier(.175,.885,.32,1.275)}'
@@ -72,7 +112,7 @@
   +   'width:0;'
   +   'overflow:hidden;'
   +   'opacity:0;'
-  +   'color:#E85D04;'
+  +   'color:var(--ah-accent);'
   +   'font-weight:600;'
   +   'vertical-align:text-bottom;'
   +   'transition:width .3s var(--expo-out),opacity .2s var(--expo-out)'
@@ -83,7 +123,7 @@
   +   'opacity:1'
   + '}'
   /* Active link text colour */
-  + '.nav_link.is-active{color:#F2F2F2}'
+  + '.nav_link.is-active{color:var(--ah-text-fill)}'
 
   /* === Nav overlay links — forward slash for active overlay link too === */
   + '.nav_overlay-link{position:relative}'
@@ -93,7 +133,7 @@
   +   'width:0;'
   +   'overflow:hidden;'
   +   'opacity:0;'
-  +   'color:#E85D04;'
+  +   'color:var(--ah-accent);'
   +   'font-weight:600;'
   +   'vertical-align:text-bottom;'
   +   'transition:width .3s var(--expo-out),opacity .2s var(--expo-out)'
@@ -111,7 +151,7 @@
   +   'position:absolute;'
   +   'top:0;left:0;'
   +   'width:100%;height:100%;'
-  +   'background:#F07020;'
+  +   'background:var(--ah-accent-hover);'
   +   'z-index:-1;'
   +   'transform:translateX(-101%);'
   +   'transition:transform .4s var(--expo-out)'
@@ -125,7 +165,7 @@
   +   'position:absolute;'
   +   'bottom:0;left:0;'
   +   'width:0;height:2px;'
-  +   'background:#E85D04;'
+  +   'background:var(--ah-accent);'
   +   'transition:width .3s var(--expo-out)'
   + '}'
   + '.button.is-ghost:hover::after{width:100%}'
@@ -135,7 +175,7 @@
   +   'transition:border-color .4s var(--expo-out),box-shadow .4s var(--expo-out),transform .5s var(--spring-smooth)'
   + '}'
   + '.card_wrapper:hover{'
-  +   'border-color:rgba(232,93,4,.3);'
+  +   'border-color:rgba(var(--ah-accent-rgb),.3);'
   +   'box-shadow:0 8px 32px rgba(0,0,0,.4);'
   +   'transform:translateY(-4px)'
   + '}'
@@ -160,7 +200,7 @@
 
   /* === Bridge text gradient sweep === */
   + '.bridge_tag{'
-  +   'background:linear-gradient(90deg,#F2F2F2 0%,#E85D04 50%,#F2F2F2 100%);'
+  +   'background:linear-gradient(90deg,var(--ah-text-fill) 0%,var(--ah-accent) 50%,var(--ah-text-fill) 100%);'
   +   'background-size:200% 100%;'
   +   '-webkit-background-clip:text;'
   +   'background-clip:text;'
@@ -180,21 +220,21 @@
   +   'left:0;top:.65em;'
   +   'width:6px;height:6px;'
   +   'border-radius:50%;'
-  +   'background:#E85D04'
+  +   'background:var(--ah-accent)'
   + '}'
 
   /* === Blockquote orange left border === */
   + 'blockquote{'
-  +   'border-left:3px solid #E85D04;'
+  +   'border-left:3px solid var(--ah-accent);'
   +   'padding-left:1.5rem;'
-  +   'background:rgba(232,93,4,.04)'
+  +   'background:rgba(var(--ah-accent-rgb),.04)'
   + '}'
 
   /* === Form focus — orange border + glow === */
   + '.form_input:focus,.form_textarea:focus,.form_select:focus{'
-  +   'border-color:#E85D04;'
+  +   'border-color:var(--ah-accent);'
   +   'outline:none;'
-  +   'box-shadow:0 0 0 3px rgba(232,93,4,.15)'
+  +   'box-shadow:0 0 0 3px var(--ah-accent-glow)'
   + '}'
 
   /* === Nav glass backdrop-filter === */
@@ -208,7 +248,7 @@
   +   'content:"";'
   +   'position:absolute;'
   +   'inset:0;'
-  +   'background:rgba(255,255,255,.05);'
+  +   'background:var(--ah-nav-wash);'
   +   'transform-origin:left;'
   +   'transform:scaleX(0);'
   +   'pointer-events:none;'
@@ -222,7 +262,7 @@
   +     'top:auto;'
   +     'bottom:0;'
   +     'height:2px;'
-  +     'background:#F2F2F2'
+  +     'background:var(--ah-nav-line)'
   +   '}'
   + '}'
 
@@ -230,7 +270,7 @@
   + '@media(hover:hover){'
   +   '.home-services_item{transition:opacity .4s var(--expo-out);border-left:2px solid transparent;padding-left:1.5rem}'
   +   '.home-services_list:has(.home-services_item:hover) .home-services_item{opacity:.4}'
-  +   '.home-services_list:has(.home-services_item:hover) .home-services_item:hover{opacity:1;border-left-color:#E85D04}'
+  +   '.home-services_list:has(.home-services_item:hover) .home-services_item:hover{opacity:1;border-left-color:var(--ah-accent)}'
   + '}'
 
   /* === Work horizontal scroll — view-timeline + animation (Designer can't do these) === */
@@ -281,19 +321,19 @@
   + '.home-services_pill{'
   +   'position:relative;'
   +   '--pill-x:50%;--pill-y:50%;'
-  +   'background-image:radial-gradient(circle,rgba(255,255,255,.05) 1px,transparent 1px);'
+  +   'background-image:radial-gradient(circle,var(--ah-dot-grid) 1px,transparent 1px);'
   +   'background-size:4px 4px;'
   +   'transition:border-color .3s var(--expo-out),color .3s var(--expo-out),box-shadow .3s var(--expo-out)'
   + '}'
   + '@media(hover:hover){'
   +   '.home-services_pill:hover{'
-  +     'border-color:rgba(232,93,4,.3);'
-  +     'color:#F2F2F2;'
+  +     'border-color:rgba(var(--ah-accent-rgb),.3);'
+  +     'color:var(--ah-text-fill);'
   +     'background-image:'
-  +       'radial-gradient(circle at var(--pill-x) var(--pill-y),rgba(232,93,4,.12) 0%,transparent 70%),'
-  +       'radial-gradient(circle,rgba(255,255,255,.07) 1px,transparent 1px);'
+  +       'radial-gradient(circle at var(--pill-x) var(--pill-y),rgba(var(--ah-accent-rgb),.12) 0%,transparent 70%),'
+  +       'radial-gradient(circle,var(--ah-dot-grid-hover) 1px,transparent 1px);'
   +     'background-size:100% 100%,4px 4px;'
-  +     'box-shadow:0 0 12px rgba(232,93,4,.08)'
+  +     'box-shadow:0 0 12px rgba(var(--ah-accent-rgb),.08)'
   +   '}'
   + '}'
 
@@ -333,7 +373,7 @@
 
   /* === Service card surface — dot-grid texture === */
   + '.home-services_card-surface{'
-  +   'background-image:radial-gradient(circle,rgba(255,255,255,.05) 1px,transparent 1px);'
+  +   'background-image:radial-gradient(circle,var(--ah-dot-grid) 1px,transparent 1px);'
   +   'background-size:4px 4px'
   + '}'
 
@@ -342,7 +382,7 @@
   +   '.home-services_card:hover .home-services_card-surface{'
   +     'background-image:'
   +       'radial-gradient(circle at var(--card-glow-x) var(--card-glow-y),rgba(var(--card-accent),.015) 0%,rgba(var(--card-accent),.008) 40%,transparent 80%),'
-  +       'radial-gradient(circle,rgba(255,255,255,.05) 1px,transparent 1px);'
+  +       'radial-gradient(circle,var(--ah-dot-grid) 1px,transparent 1px);'
   +     'background-size:100% 100%,4px 4px'
   +   '}'
   +   '.home-services_card:hover{border-color:rgba(var(--card-accent),.15)}'
@@ -355,7 +395,7 @@
   + '}'
 
   /* === Process line — orange slash separators === */
-  + '.home-proof_slash{color:#E85D04;font-weight:600}'
+  + '.home-proof_slash{color:var(--ah-accent);font-weight:600}'
 
   /* === Custom cursor — hide system cursor immediately (header script, no flash) === */
   + '@media(hover:hover) and (prefers-reduced-motion:no-preference){'
@@ -367,7 +407,7 @@
   +   'html{scroll-behavior:auto}'
   +   '.home-hero_heading,.home-hero_subline{opacity:1}'
   +   + '[data-ah-reveal]{opacity:1;animation:none;transform:none}'
-  +   + '.bridge_tag{animation:none;background:none;-webkit-text-fill-color:#F2F2F2}'
+  +   + '.bridge_tag{animation:none;background:none;-webkit-text-fill-color:var(--ah-text-fill)}'
   +   + '.card_wrapper{transition:none}'
   +   + '.home-work_wrapper{height:auto}'
   +   + '.home-work_viewport{position:static;height:auto;overflow:visible}'

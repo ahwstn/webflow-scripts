@@ -1,6 +1,6 @@
 /**
  * ah-hero.js — Ambient Dot-Grid Hero Background + Hover Spotlight
- * @version 2.0.0
+ * @version 2.1.0
  * @cdn https://cdn.jsdelivr.net/gh/ahwstn/webflow-scripts@main/ahwstn/ah-hero.min.js
  *
  * Flickering dot-grid canvas behind hero text. Cursor-following spotlight
@@ -12,6 +12,7 @@
  *
  * v1.0.0: Initial build — radial vignette, IO pause, RO resize, reduced-motion.
  * v2.0.0: Hover spotlight — lerped cursor tracking, boosted flicker ceiling + rate.
+ * v2.1.0: Theme-aware — reads dot colour from window.ahTheme, listens for themechange.
  */
 (function () {
   'use strict';
@@ -25,7 +26,10 @@
   var STEP = SQ + GAP;
   var FLICKER = 0.3;     /* base flicker rate (multiplied by deltaTime) */
   var BASE_ALPHA = 0.1;
-  var COLOR_R = 242, COLOR_G = 242, COLOR_B = 242; /* Off-White #F2F2F2 */
+  var tc = window.ahTheme ? window.ahTheme.colors[window.ahTheme.current] : null;
+  var COLOR_R = tc ? tc.dotR : 242;
+  var COLOR_G = tc ? tc.dotG : 242;
+  var COLOR_B = tc ? tc.dotB : 242;
 
   /* Hover spotlight */
   var HOVER_RADIUS = 500;     /* px — spotlight radius */
@@ -197,5 +201,12 @@
     if (isVisible) start();
   });
   ro.observe(hero);
+
+  /* Theme change: update dot colours */
+  document.documentElement.addEventListener('themechange', function () {
+    var c = window.ahTheme.colors[window.ahTheme.current];
+    COLOR_R = c.dotR; COLOR_G = c.dotG; COLOR_B = c.dotB;
+    draw();
+  });
 
 })();

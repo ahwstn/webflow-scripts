@@ -1,6 +1,6 @@
 /**
  * ah-cursor.js — Custom Square Cursor
- * @version 1.0.0
+ * @version 1.1.0
  * @cdn https://cdn.jsdelivr.net/gh/ahwstn/webflow-scripts@main/ahwstn/ah-cursor.min.js
  *
  * DOM-based custom cursor: 20px square, mix-blend-mode: difference,
@@ -11,6 +11,7 @@
  *
  * v1.0.0: Square cursor, quickTo follow, hover scale, click hollow,
  *         edge fade, reduced-motion + touch guards.
+ * v1.1.0: Theme-aware — cursor colour via CSS custom property var(--ah-cursor-color).
  */
 (function () {
   'use strict';
@@ -26,7 +27,7 @@
     + '.ah-cursor{'
     +   'position:fixed;top:0;left:0;'
     +   'width:10px;height:10px;'
-    +   'background-color:#F2F2F2;'
+    +   'background-color:var(--ah-cursor-color,#F2F2F2);'
     +   'mix-blend-mode:difference;'
     +   'pointer-events:none;'
     +   'z-index:9999;'
@@ -38,7 +39,7 @@
     + '}'
     + '.ah-cursor.is-hollow{'
     +   'background-color:transparent;'
-    +   'border-color:#F2F2F2'
+    +   'border-color:var(--ah-cursor-color,#F2F2F2)'
     + '}'
     /* cursor:none handled by ahCss.js (header) for instant hide */
   ;
