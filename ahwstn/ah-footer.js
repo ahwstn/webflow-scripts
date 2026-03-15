@@ -196,6 +196,7 @@
       var STEP = this.SQ + this.GAP;
       var w = wrap.clientWidth;
       var h = wrap.clientHeight;
+      if (!w || !h) return; /* Element not laid out yet — RO will retry */
       var dpr = window.devicePixelRatio || 1;
       this._canvas.width = w * dpr;
       this._canvas.height = h * dpr;

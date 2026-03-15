@@ -13,6 +13,8 @@
  * Depends on: Barba.js core, GSAP, window.ah module registry (ahJs.js).
  * Static-first: without this script, standard multi-page navigation works.
  *
+ * v1.0.1: Fix: initPage() moved to `after` hook — old container must be removed
+ *         before querySelector can find elements in the new container.
  * v1.0.0: Initial build — page transitions, module lifecycle, nav active sync.
  */
 (function () {
@@ -100,22 +102,22 @@
       },
       enter: function (data) {
         window.scrollTo(0, 0);
-        /* Reset Lenis scroll position if it exists */
         if (window.lenis) {
           window.lenis.scrollTo(0, { immediate: true });
         }
-        if (rm) {
-          initPage(data.next.namespace);
-          return;
-        }
+        if (rm) return; /* instant swap for reduced motion */
         gsap.set(data.next.container, { opacity: 0, y: 30 });
         return gsap.to(data.next.container, {
           opacity: 1,
           y: 0,
           duration: 0.4,
-          ease: 'power2.out',
-          onComplete: function () { initPage(data.next.namespace); }
+          ease: 'power2.out'
         });
+      },
+      /* after: runs AFTER old container is removed from DOM.
+         Critical — querySelector must only find elements in the new container. */
+      after: function (data) {
+        initPage(data.next.namespace);
       }
     }]
   });
