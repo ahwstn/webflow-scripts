@@ -82,12 +82,12 @@
 
   if (statementText && window.gsap && window.SplitText && window.ScrollTrigger && !rm) {
     document.fonts.ready.then(function () {
-      var split = new SplitText(statementText, { type: 'chars', aria: false });
+      var split = new SplitText(statementText, { type: 'words,chars', aria: false });
       gsap.set(split.chars, { opacity: 0.15 });
 
       gsap.to(split.chars, {
         opacity: 1,
-        stagger: 0.03,
+        stagger: 0.02,
         scrollTrigger: {
           trigger: '.section_home-statement',
           start: 'top 80%',
