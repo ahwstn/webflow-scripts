@@ -1,11 +1,13 @@
 /**
  * ah-transitions.js — Barba.js Page Transitions
- * @version 2.5.0
+ * @version 3.0.0
  * @cdn https://cdn.ahwstn.com/ahwstn/ah-transitions.min.js
  *
  * Overlay wipe: charcoal bar sweeps UP covering old page, continues UP
  * off the top revealing new page sitting underneath. One element, one direction.
  *
+ * v3.0.0: Home entrance choreography — canvas row reveal, hero text cascade,
+ *         nav drop-in, logo typewriter. Other pages: overlay wipe only.
  * v2.5.0: Init new page BEFORE overlay lifts (hidden behind it). Slower timing.
  * v2.4.0: Fix CSS/GSAP transform conflict. Destroy after overlay covers.
  */
@@ -138,15 +140,59 @@
 
         if (rm) return;
 
-        /* Now lift the overlay to reveal the fully initialised page */
-        return gsap.to(overlay, {
-          yPercent: -100,
-          duration: 0.8,
-          ease: ease,
+        var isHome = data.next.namespace === 'home';
+
+        if (!isHome) {
+          /* Non-home: standard overlay lift */
+          return gsap.to(overlay, {
+            yPercent: -100,
+            duration: 0.8,
+            ease: ease,
+            onComplete: function () {
+              gsap.set(overlay, { yPercent: 100 });
+            }
+          });
+        }
+
+        /* === Home entrance choreography === */
+        var navWrapper = document.querySelector('.nav_wrapper');
+        if (navWrapper) gsap.set(navWrapper, { y: '-100%' });
+
+        var tl = gsap.timeline({
           onComplete: function () {
             gsap.set(overlay, { yPercent: 100 });
+            /* Ensure nav lands at natural position */
+            if (navWrapper) gsap.set(navWrapper, { clearProps: 'y' });
           }
         });
+
+        /* Overlay lifts */
+        tl.to(overlay, {
+          yPercent: -100,
+          duration: 0.8,
+          ease: ease
+        });
+
+        /* Canvas rows reveal top-down (starts with overlay lift) */
+        if (ah.heroCanvas && typeof ah.heroCanvas.entrance === 'function') {
+          tl.add(ah.heroCanvas.entrance(), 0);
+        }
+
+        /* Hero text cascades (0.4s into the sequence) */
+        if (ah.hero && typeof ah.hero.entrance === 'function') {
+          tl.add(function () { ah.hero.entrance(0); }, 0.4);
+        }
+
+        /* Nav drops in from top (0.5s into the sequence) */
+        if (navWrapper) {
+          tl.to(navWrapper, {
+            y: 0,
+            duration: 0.5,
+            ease: 'power3.out'
+          }, 0.5);
+        }
+
+        return tl;
       },
 
       after: function () {

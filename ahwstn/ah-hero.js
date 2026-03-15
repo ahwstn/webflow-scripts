@@ -1,6 +1,6 @@
 /**
  * ah-hero.js — Ambient Dot-Grid Hero Background + Hover Spotlight
- * @version 3.0.0
+ * @version 4.0.0
  * @cdn https://cdn.ahwstn.com/ahwstn/ah-hero.min.js
  *
  * Flickering dot-grid canvas behind hero text. Cursor-following spotlight
@@ -10,6 +10,8 @@
  * Static-first: hero content is fully readable without JS. Canvas is
  * purely decorative (aria-hidden).
  *
+ * v4.0.0: Entrance choreography — row reveal (top-down CRT warmup) gated by
+ *         _revealProgress. entrance() returns GSAP tween for timeline chaining.
  * v3.0.0: Module pattern — ah.heroCanvas with init/destroy for Barba lifecycle.
  *         DOM-gated: exits silently if .section_home-hero is absent.
  * v2.1.0: Theme-aware — reads dot colour from window.ahTheme, listens for themechange.
@@ -44,6 +46,7 @@
     _colorR: 242,
     _colorG: 242,
     _colorB: 242,
+    _revealProgress: 1,
 
     /* Constants */
     SQ: 3,
@@ -127,6 +130,23 @@
       document.documentElement.addEventListener('themechange', this._themeHandler);
     },
 
+    /**
+     * entrance() — Trigger row-by-row reveal (CRT warmup).
+     * Call from transition choreography. Returns the GSAP tween for timeline chaining.
+     * If never called, _revealProgress stays at 1 (fully visible).
+     */
+    entrance: function () {
+      if (!window.gsap) return null;
+      this._revealProgress = 0;
+      var self = this;
+      return gsap.to(this, {
+        _revealProgress: 1,
+        duration: 0.8,
+        ease: 'power2.out',
+        onUpdate: function () { self._draw(); }
+      });
+    },
+
     destroy: function () {
       this._stop();
 
@@ -159,6 +179,7 @@
       this._smoothX = -9999;
       this._smoothY = -9999;
       this._isHovered = false;
+      this._revealProgress = 1;
     },
 
     _resize: function () {
@@ -194,7 +215,10 @@
       var h = hero.clientHeight;
       this._ctx.clearRect(0, 0, w, h);
 
+      var revealRow = Math.floor(this._revealProgress * this._rows);
+
       for (var r = 0; r < this._rows; r++) {
+        if (r > revealRow) continue;
         for (var c = 0; c < this._cols; c++) {
           var i = r * this._cols + c;
           var alpha = this._grid[i];

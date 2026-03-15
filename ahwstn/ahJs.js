@@ -1,11 +1,14 @@
 /**
  * ahJs.js — Behavioural JS (Footer, defer)
- * @version 3.0.0
+ * @version 4.0.0
  * @cdn https://cdn.ahwstn.com/ahwstn/ahJs.min.js
  *
  * Vanilla JS + GSAP (loaded via Site Settings: ScrollTrigger, SplitText).
  * Static-first: all content visible and navigable without this script.
  *
+ * v4.0.0: Hero entrance choreography — init() sets up SplitText in ready state,
+ *         entrance(delay) triggers cascade with custom timing. Auto-plays if
+ *         entrance() never called (non-home pages). No visual change on non-home.
  * v3.0.0: Module registry refactor — each feature is ah.{module} with init/destroy
  *         for Barba.js page transition lifecycle management. No behavioural changes.
  *
@@ -66,10 +69,17 @@
   /* ===== ah.hero — SplitText word cascade ===== */
   ah.hero = {
     _split: null,
+    _ready: false,
+    _autoPlay: true,
+    _heroSubline: null,
+
     init: function () {
       var heroHeading = document.querySelector('.home-hero_heading');
       var heroSubline = document.querySelector('.home-hero_subline');
       if (!heroHeading || !window.gsap || !window.SplitText) return;
+
+      this._heroSubline = heroSubline;
+      this._ready = false;
 
       document.fonts.ready.then(function () {
         ah.hero._split = new SplitText(heroHeading, { type: 'words', aria: false });
@@ -77,35 +87,74 @@
         gsap.set(heroHeading, { opacity: 1 });
         if (heroSubline) gsap.set(heroSubline, { y: 20 });
 
-        if (!rm) {
-          gsap.to(ah.hero._split.words, {
-            opacity: 1,
-            y: 0,
-            duration: 0.8,
-            stagger: 0.06,
-            ease: 'power4.out',
-            delay: 0.3
-          });
-          if (heroSubline) {
-            gsap.to(heroSubline, {
-              opacity: 1,
-              y: 0,
-              duration: 0.6,
-              delay: 0.8,
-              ease: 'power3.out'
-            });
-          }
-        } else {
+        if (rm) {
           gsap.set(ah.hero._split.words, { opacity: 1, y: 0 });
           if (heroSubline) gsap.set(heroSubline, { opacity: 1 });
         }
+
+        ah.hero._ready = true;
+
+        /* Auto-play if entrance() was never called (non-choreographed pages) */
+        if (ah.hero._autoPlay && !rm) {
+          ah.hero._playAnimation(0.3);
+        }
       });
     },
+
+    /**
+     * entrance(delay) — Trigger the word cascade with a custom delay.
+     * Call from transition choreography. Disables auto-play.
+     * Returns the tween for timeline chaining (resolves via onComplete).
+     */
+    entrance: function (delay) {
+      this._autoPlay = false;
+      if (rm) return null;
+
+      var self = this;
+      if (this._ready) {
+        return this._playAnimation(delay || 0);
+      }
+      /* Fonts not ready yet — wait, then play */
+      return gsap.delayedCall(0, function checkReady() {
+        if (self._ready) {
+          self._playAnimation(delay || 0);
+        } else {
+          gsap.delayedCall(0.05, checkReady);
+        }
+      });
+    },
+
+    _playAnimation: function (delay) {
+      if (!this._split) return null;
+      var heroSubline = this._heroSubline;
+      var tween = gsap.to(this._split.words, {
+        opacity: 1,
+        y: 0,
+        duration: 0.8,
+        stagger: 0.06,
+        ease: 'power4.out',
+        delay: delay
+      });
+      if (heroSubline) {
+        gsap.to(heroSubline, {
+          opacity: 1,
+          y: 0,
+          duration: 0.6,
+          delay: delay + 0.5,
+          ease: 'power3.out'
+        });
+      }
+      return tween;
+    },
+
     destroy: function () {
       if (this._split) {
         this._split.revert();
         this._split = null;
       }
+      this._ready = false;
+      this._autoPlay = true;
+      this._heroSubline = null;
     }
   };
 
