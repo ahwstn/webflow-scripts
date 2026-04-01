@@ -190,7 +190,6 @@
   }
 
   function initAfterEnterFunctions(next) {
-    nextPage = next || document;
     bindCursorEvents(next);
     initHeroCarousel();
     initTextReveals(next);
